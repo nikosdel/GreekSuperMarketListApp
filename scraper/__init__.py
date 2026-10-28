@@ -1,0 +1,1 @@
+"""Local supermarket catalog scrapers."""

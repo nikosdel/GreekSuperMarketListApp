@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: supermarket-postgres
+    environment:
+      POSTGRES_USER: supermarket
+      POSTGRES_PASSWORD: supermarket
+      POSTGRES_DB: supermarket
+    ports:
+      # 5432 is often already taken on this PC (another local Postgres).
+      - "5433:5432"
+    volumes:
+      - supermarket_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supermarket -d supermarket"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  supermarket_pg:
