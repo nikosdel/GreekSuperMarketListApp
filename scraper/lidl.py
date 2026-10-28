@@ -19,11 +19,12 @@ from datetime import datetime, timezone
 import httpx
 
 from scraper.config import lidl_delay_seconds, lidl_fetch_size
-from scraper.db import connect, upsert_products
+from scraper.db import Chain, connect, upsert_products
 from scraper.parsing import CatalogProduct, prefer, parse_product_html, products_from_category
 from scraper.robots import Robots
 
 logger = logging.getLogger("lidl")
+LIDL_CHAIN = Chain("lidl", "Lidl", "GR", "https://www.lidl.gr")
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -354,7 +355,7 @@ def run_lidl() -> int:
         logger.info("category listings collected %s products", len(catalog))
         if catalog:
             with connect() as conn:
-                stats = upsert_products(conn, list(catalog.values()), scraped_at)
+                stats = upsert_products(conn, list(catalog.values()), scraped_at, LIDL_CHAIN)
             logger.info(
                 "saved category pass: %s products, %s new prices, %s refreshed, %s without a price",
                 stats.products,
@@ -381,7 +382,7 @@ def run_lidl() -> int:
 
     if page_only:
         with connect() as conn:
-            stats = upsert_products(conn, page_only, scraped_at)
+            stats = upsert_products(conn, page_only, scraped_at, LIDL_CHAIN)
         logger.info(
             "saved product-page pass: %s products, %s new prices",
             stats.products,

@@ -21,6 +21,7 @@ class Robots:
 
     @classmethod
     def parse(cls, body: str) -> Robots:
+        body = body.lstrip("\ufeff")
         rules: list[str] = []
         active = False
         for raw in body.splitlines():
@@ -40,4 +41,10 @@ class Robots:
         parsed = urlparse(url)
         path = parsed.path or "/"
         target = path + (f"?{parsed.query}" if parsed.query else "")
-        return not any(rule.match(target) for rule in self._rules)
+        # Some shops publish disallow paths without a leading slash.
+        candidates = [target]
+        if target.startswith("/"):
+            candidates.append(target[1:])
+        return not any(
+            rule.match(candidate) for candidate in candidates for rule in self._rules
+        )

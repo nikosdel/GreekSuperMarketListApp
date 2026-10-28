@@ -70,6 +70,14 @@ def migrate() -> list[str]:
     return applied
 
 
+@dataclass(frozen=True)
+class Chain:
+    id: str
+    name: str
+    country: str
+    website_url: str
+
+
 @dataclass
 class UpsertStats:
     products: int = 0
@@ -91,17 +99,20 @@ def upsert_products(
     conn: psycopg.Connection,
     products: list[CatalogProduct],
     scraped_at: datetime,
+    chain: Chain,
 ) -> UpsertStats:
     stats = UpsertStats()
     with conn.transaction():
         conn.execute(
             """
             INSERT INTO chain (id, name, country, website_url)
-            VALUES ('lidl', 'Lidl', 'GR', 'https://www.lidl.gr')
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE
                 SET name = EXCLUDED.name,
+                    country = EXCLUDED.country,
                     website_url = EXCLUDED.website_url
-            """
+            """,
+            (chain.id, chain.name, chain.country, chain.website_url),
         )
         for product in products:
             price = product.price if product.currency == "EUR" else None
@@ -111,7 +122,7 @@ def upsert_products(
                     chain_id, external_id, name, brand, size_text, unit,
                     category_path, image_url, product_url, updated_at
                 )
-                VALUES ('lidl', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (chain_id, external_id) DO UPDATE
                     SET name = EXCLUDED.name,
                         brand = EXCLUDED.brand,
@@ -124,6 +135,7 @@ def upsert_products(
                 RETURNING id
                 """,
                 (
+                    chain.id,
                     product.external_id,
                     product.name,
                     product.brand,

@@ -30,6 +30,12 @@ def lidl_delay_seconds() -> float:
     return max(1.0, raw)
 
 
+def masoutis_delay_seconds() -> float:
+    load_dotenv()
+    raw = float(os.environ.get("MASOUTIS_REQUEST_DELAY_SECONDS", "1.5"))
+    return max(1.0, raw)
+
+
 def lidl_fetch_size() -> int:
     load_dotenv()
     raw = int(os.environ.get("LIDL_FETCH_SIZE", "100"))
