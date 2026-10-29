@@ -2,6 +2,7 @@
 .venv/
 lidl-run.log
 masoutis-run.log
+sklavenitis-run.log
 __pycache__/
 *.py[cod]
 .pytest_cache/

@@ -1,10 +1,10 @@
 # Super Market Web App
 
-Phase 1 starts here: a Postgres catalog plus importers for Lidl Greece and Masoutis. Each product belongs to one supermarket through `product.chain_id` (`lidl` or `masoutis`). The same item sold by both shops is two rows.
+Phase 1 starts here: a Postgres catalog plus importers for Lidl Greece, Masoutis, and Sklavenitis. Each product belongs to one supermarket through `product.chain_id` (`lidl`, `masoutis`, or `sklavenitis`). The same item sold by more than one shop is a separate row for each shop.
 
-`https://www.lidl.gr` redirects to `https://www.lidl-hellas.gr`. The Lidl scraper reads public category listings, then any product sitemap URLs those listings missed. The Masoutis scraper reads the public category listing the shop site itself uses. It saves shelf departments first, then offer, brand, and diet views only for products that were not already on a shelf.
+`https://www.lidl.gr` redirects to `https://www.lidl-hellas.gr`. The Lidl scraper reads public category listings, then any product sitemap URLs those listings missed. The Masoutis scraper reads the public category listing the shop site itself uses. It saves shelf departments first, then offer, brand, and diet views only for products that were not already on a shelf. The Sklavenitis scraper reads the public department listings (`?pg=2` is the next page of 24). It does not request `/netvolution` or pages ending in `.aspx`, which `robots.txt` disallows.
 
-Both scrapers wait at least 1.5 seconds between requests and skip anything `robots.txt` disallows (Lidl `/q/search?id=`, Masoutis category search). Prices are in EUR. A new price snapshot is stored when the price or unit price changes. If a later run sees the same price, it refreshes `scraped_at` on the latest snapshot. When Lidl writes a unit price as «Από 4,58€ σε 2,70€», the number stored is the current amount (2.70). Masoutis unit prices look like `4,53€/κιλ`. Products with no published price are kept without a snapshot. `price` is the pack you pay for. `unit_price` is the comparable amount per kilo or per litre.
+The scrapers wait at least 1.5 seconds between requests and skip anything `robots.txt` disallows (Lidl `/q/search?id=`, Masoutis category search, Sklavenitis `.aspx` pages). Prices are in EUR. A new price snapshot is stored when the price or unit price changes. If a later run sees the same price, it refreshes `scraped_at` on the latest snapshot. When Lidl writes a unit price as «Από 4,58€ σε 2,70€», the number stored is the current amount (2.70). Masoutis unit prices look like `4,53€/κιλ`. Sklavenitis unit prices look like `7,60 €/κιλό`. Products with no published price are kept without a snapshot. `price` is the pack you pay for. `unit_price` is the comparable amount per kilo or per litre.
 
 Port **5433** is used because another Postgres container on this PC already listens on 5432.
 
@@ -53,6 +53,14 @@ python -m scraper masoutis
 ```
 
 This also waits 1.5 seconds between requests. A full catalog is a few hundred listing pages.
+
+## Run the Sklavenitis scraper
+
+```powershell
+python -m scraper sklavenitis
+```
+
+This waits 1.5 seconds between requests. A full catalog is the department pages, 24 products at a time.
 
 ## Query a few products
 
