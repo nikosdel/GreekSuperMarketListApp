@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -20,18 +21,59 @@ def connect() -> psycopg.Connection:
 
 
 def _statements(sql: str) -> list[str]:
+    """Split SQL on semicolons, keeping function bodies intact."""
     statements: list[str] = []
-    buffer: list[str] = []
-    for line in sql.splitlines():
-        if line.strip().startswith("--"):
+    buf: list[str] = []
+    i = 0
+    n = len(sql)
+    dollar: str | None = None
+    in_single = False
+    while i < n:
+        if dollar is not None:
+            if sql.startswith(dollar, i):
+                buf.append(dollar)
+                i += len(dollar)
+                dollar = None
+            else:
+                buf.append(sql[i])
+                i += 1
             continue
-        buffer.append(line)
-        if line.rstrip().endswith(";"):
-            statement = "\n".join(buffer).strip()
+        if in_single:
+            buf.append(sql[i])
+            if sql[i] == "'":
+                if i + 1 < n and sql[i + 1] == "'":
+                    buf.append("'")
+                    i += 2
+                    continue
+                in_single = False
+            i += 1
+            continue
+        if sql.startswith("--", i):
+            newline = sql.find("\n", i)
+            i = n if newline < 0 else newline
+            continue
+        if sql[i] == "'":
+            in_single = True
+            buf.append("'")
+            i += 1
+            continue
+        if sql[i] == "$":
+            match = re.match(r"\$[A-Za-z0-9_]*\$", sql[i:])
+            if match:
+                dollar = match.group(0)
+                buf.append(dollar)
+                i += len(dollar)
+                continue
+        if sql[i] == ";":
+            statement = "".join(buf).strip()
             if statement:
                 statements.append(statement)
-            buffer = []
-    trailing = "\n".join(buffer).strip()
+            buf = []
+            i += 1
+            continue
+        buf.append(sql[i])
+        i += 1
+    trailing = "".join(buf).strip()
     if trailing:
         statements.append(trailing)
     return statements
