@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -86,6 +86,18 @@ class UpsertStats:
     skipped_price: int = 0
 
 
+def _same_moment(left: datetime | None, right: datetime | None) -> bool:
+    if left is None and right is None:
+        return True
+    if left is None or right is None:
+        return False
+    left_utc = left if left.tzinfo else left.replace(tzinfo=timezone.utc)
+    right_utc = right if right.tzinfo else right.replace(tzinfo=timezone.utc)
+    return left_utc.astimezone(timezone.utc).replace(microsecond=0) == right_utc.astimezone(
+        timezone.utc
+    ).replace(microsecond=0)
+
+
 def _same_amount(left: Decimal | None, right: Decimal | None, places: str) -> bool:
     if left is None and right is None:
         return True
@@ -154,7 +166,7 @@ def upsert_products(
             product_id = row[0]
             latest = conn.execute(
                 """
-                SELECT id, price, unit_price, unit_price_text
+                SELECT id, price, unit_price, unit_price_text, observed_at
                 FROM price_snapshot
                 WHERE product_id = %s
                 ORDER BY scraped_at DESC, id DESC
@@ -167,6 +179,7 @@ def upsert_products(
                 and _same_amount(latest[1], price, "0.01")
                 and _same_amount(latest[2], product.unit_price, "0.0001")
                 and (latest[3] or None) == (product.unit_price_text or None)
+                and _same_moment(latest[4], product.observed_at)
             )
             if unchanged:
                 conn.execute(
@@ -178,9 +191,10 @@ def upsert_products(
             conn.execute(
                 """
                 INSERT INTO price_snapshot (
-                    product_id, price, unit_price, unit_price_text, currency, scraped_at
+                    product_id, price, unit_price, unit_price_text, currency,
+                    scraped_at, observed_at
                 )
-                VALUES (%s, %s, %s, %s, 'EUR', %s)
+                VALUES (%s, %s, %s, %s, 'EUR', %s, %s)
                 """,
                 (
                     product_id,
@@ -188,6 +202,7 @@ def upsert_products(
                     product.unit_price,
                     product.unit_price_text,
                     scraped_at,
+                    product.observed_at,
                 ),
             )
             stats.snapshots_new += 1

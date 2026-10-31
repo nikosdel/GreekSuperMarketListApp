@@ -6,6 +6,7 @@ import html
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 _UNIT_RE = re.compile(
@@ -49,6 +50,7 @@ class CatalogProduct:
     unit_price: Decimal | None
     unit_price_text: str | None
     currency: str = "EUR"
+    observed_at: datetime | None = None
 
     def richness(self) -> int:
         fields = (
