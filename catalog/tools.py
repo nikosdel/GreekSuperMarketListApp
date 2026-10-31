@@ -290,8 +290,90 @@ def cheapest_basket(items: list[str]) -> BasketResult:
     return BasketResult(lines=lines, split_total=split_total, one_shop=one_shop)
 
 
-def _tokens(query: str) -> list[str]:
-    tokens = [part for part in query.split() if len(part.strip()) >= 2]
+@dataclass(frozen=True)
+class _Token:
+    kind: str
+    value: str
+
+
+_FOLD_FROM = "άέήίόύώϊϋΐΰςΆΈΉΊΌΎΏΪΫΣ"
+_FOLD_TO = "αεηιουωιυιυσΑΕΗΙΟΥΩΙΥΣ"
+_WORD_CHARS = "0-9A-Za-zΑ-Ωα-ω"
+_STOPWORDS = {
+    "ενα",
+    "ενας",
+    "μια",
+    "το",
+    "τον",
+    "την",
+    "της",
+    "του",
+    "τα",
+    "τις",
+    "των",
+    "για",
+    "απο",
+    "στο",
+    "στη",
+    "στην",
+    "στον",
+    "στα",
+    "στις",
+    "που",
+    "συμφερει",
+    "να",
+    "παρω",
+}
+_UNIT_KIND = {
+    "λιτρου": "l",
+    "λιτρο": "l",
+    "λιτρα": "l",
+    "lt": "l",
+    "l": "l",
+    "ml": "ml",
+    "μιλιλιτρα": "ml",
+    "μιλιλιτρο": "ml",
+    "γρ": "g",
+    "γραμ": "g",
+    "γραμμαρια": "g",
+    "γραμμαριων": "g",
+    "g": "g",
+    "κιλο": "kg",
+    "κιλου": "kg",
+    "κιλων": "kg",
+    "kg": "kg",
+}
+
+
+def _tokens(query: str) -> list[_Token]:
+    parts = [_fold(part.strip(".,;:!?()")) for part in query.split()]
+    parts = [part for part in parts if part]
+    tokens: list[_Token] = []
+    index = 0
+    while index < len(parts):
+        part = parts[index]
+        if part in _STOPWORDS:
+            index += 1
+            continue
+        if _is_number(part) and index + 1 < len(parts) and parts[index + 1] in _UNIT_KIND:
+            tokens.append(_Token("size", part + _UNIT_KIND[parts[index + 1]]))
+            index += 2
+            continue
+        if part in _UNIT_KIND:
+            index += 1
+            continue
+        glued = _glued_size(part)
+        if glued is not None:
+            tokens.append(_Token("size", glued))
+            index += 1
+            continue
+        if _is_number(part):
+            tokens.append(_Token("number", part))
+            index += 1
+            continue
+        if len(part) >= 2:
+            tokens.append(_Token("word", part))
+        index += 1
     if not tokens:
         raise ValueError("query needs at least one word of 2 characters")
     if len(tokens) > 8:
@@ -305,24 +387,43 @@ def _bounded_limit(limit: int) -> int:
     return limit
 
 
-# Letters that count as part of a word. "γάλα" must not match inside "μεγάλα".
-_WORD_CHARS = "0-9A-Za-zΑ-Ωα-ωΆ-ώϊϋΐΰ"
+def _fold(value: str) -> str:
+    return value.translate(str.maketrans(_FOLD_FROM, _FOLD_TO)).casefold()
 
 
-def _name_match(tokens: list[str]) -> tuple[str, list]:
+def _is_number(value: str) -> bool:
+    return re.fullmatch(r"\d+(?:[.,]\d+)?", value) is not None
+
+
+def _glued_size(value: str) -> str | None:
+    match = re.fullmatch(r"(\d+(?:[.,]\d+)?)(lt|l|ml|g|γρ|kg|κιλο)", value)
+    if match is None:
+        return None
+    amount, unit = match.groups()
+    kind = {"lt": "l", "l": "l", "ml": "ml", "g": "g", "γρ": "g", "kg": "kg", "κιλο": "kg"}[unit]
+    return amount + kind
+
+
+def _folded_column(column: str) -> str:
+    return f"translate({column}, '{_FOLD_FROM}', '{_FOLD_TO}')"
+
+
+def _name_match(tokens: list[_Token]) -> tuple[str, list]:
     return _column_match("p.name", tokens)
 
 
-def _column_match(column: str, tokens: list[str]) -> tuple[str, list]:
+def _column_match(column: str, tokens: list[_Token]) -> tuple[str, list]:
+    folded = _folded_column(column)
     clauses: list[str] = []
     params: list = []
     for token in tokens:
-        if any(ch.isalpha() for ch in token):
-            clauses.append(f"{column} ~* %s")
-            params.append(_word_pattern(token))
+        clauses.append(f"{folded} ~* %s")
+        if token.kind == "word":
+            params.append(_word_pattern(token.value))
+        elif token.kind == "size":
+            params.append(_size_pattern(token.value))
         else:
-            clauses.append(f"{column} ~ %s")
-            params.append(_number_pattern(token))
+            params.append(_number_pattern(token.value))
     return " AND ".join(clauses), params
 
 
@@ -336,6 +437,16 @@ def _number_pattern(token: str) -> str:
     """Match 160 inside 160g, and not inside 1600 or 2160."""
     escaped = re.escape(token)
     return f"(^|[^0-9]){escaped}([^0-9]|$)"
+
+
+def _size_pattern(value: str) -> str:
+    match = re.fullmatch(r"(\d+(?:[.,]\d+)?)(l|ml|g|kg)", value)
+    if match is None:
+        return _number_pattern(value)
+    amount, unit = match.groups()
+    amount = re.escape(amount)
+    unit_pattern = {"l": r"l(?:t)?", "ml": r"ml", "g": r"(?:g|γρ)", "kg": r"(?:kg|κιλο)"}[unit]
+    return f"(^|[^0-9]){amount}\\s*{unit_pattern}([^0-9a-zα-ω]|$)"
 
 
 def _candidate_names(conn, tokens: list[str], *, limit: int, prefer: str) -> list[NameHit]:
@@ -413,10 +524,15 @@ def _prefer_category_matches(hits: list[NameHit], tokens: list[str], *, prefer: 
     return [hit for _value, hit in scored]
 
 
-def _contains_token(text: str, token: str) -> bool:
-    if any(ch.isalpha() for ch in token):
-        return re.search(_word_pattern(token), text, flags=re.IGNORECASE) is not None
-    return re.search(_number_pattern(token), text) is not None
+def _contains_token(text: str, token: _Token) -> bool:
+    folded = _fold(text)
+    if token.kind == "word":
+        pattern = _word_pattern(token.value)
+    elif token.kind == "size":
+        pattern = _size_pattern(token.value)
+    else:
+        pattern = _number_pattern(token.value)
+    return re.search(pattern, folded, flags=re.IGNORECASE) is not None
 
 
 def _offers_for_names(conn, names: list[str]) -> list[Offer]:

@@ -83,7 +83,7 @@ The other lookups use the Python inside `.venv`:
 ollama pull qwen2.5:3b
 ```
 
-Add `--json` to print the raw result. Search accepts `--category` and `--limit` (1 to 30). Each result is the short name, the shop, the category, the pack price, the unit price, and the update date.
+Add `--json` to print the raw result. Search accepts `--category` and `--limit` (1 to 30). Each result is the short name, the shop, the category, the pack price, the unit price, and the update date. Filler words such as «ένα» are ignored, accents are ignored, and «1 λίτρου» matches a product written `1lt`.
 
 ## Query a few products
 
