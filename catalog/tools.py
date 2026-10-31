@@ -37,9 +37,9 @@ TOOL_SPECS = [
     {
         "name": "compare_product",
         "description": (
-            "Pick the product name that matches every word. A name whose "
-            "category also uses those words wins, then the name sold at "
-            "the most shops. Lists that name's pack price at each shop."
+            "Compare one product across shops. Do not use this for a list of "
+            "several products. A name whose category also uses the words "
+            "wins, then the name sold at the most shops."
         ),
         "parameters": {
             "type": "object",
@@ -50,10 +50,9 @@ TOOL_SPECS = [
     {
         "name": "cheapest_basket",
         "description": (
-            "For each shopping item, choose the matching product name. A "
-            "name whose category uses the words wins, then the name sold "
-            "at the most shops. Return the cheapest pack for each item, "
-            "and the one-shop totals for chains that sell every chosen item."
+            "Use this for two or more products. Pass each product as its own "
+            "string in items, copied from the user. Returns the cheapest "
+            "pack of each chosen name and the one-shop totals."
         ),
         "parameters": {
             "type": "object",
@@ -409,6 +408,35 @@ def _offers_for_names(conn, names: list[str]) -> list[Offer]:
         (unique,),
     ).fetchall()
     return [_offer(row) for row in rows]
+
+
+def run_tool(name: str, arguments: dict | None) -> dict:
+    """Run one catalog tool. Used by the free local chat."""
+    arguments = arguments or {}
+    if name == "search_products":
+        query = arguments.get("query")
+        if not isinstance(query, str):
+            raise ValueError("search_products needs a query string")
+        limit = arguments.get("limit", 8)
+        offers = search_products(
+            query,
+            category=arguments.get("category") if isinstance(arguments.get("category"), str) else None,
+            limit=int(limit),
+        )
+        return {"offers": [offer.to_dict() for offer in offers]}
+    if name == "compare_product":
+        query = arguments.get("query")
+        if not isinstance(query, str):
+            raise ValueError("compare_product needs a query string")
+        return compare_product(query).to_dict()
+    if name == "cheapest_basket":
+        items = arguments.get("items")
+        if isinstance(items, str):
+            items = [items]
+        if not isinstance(items, list) or not all(isinstance(item, str) for item in items):
+            raise ValueError("cheapest_basket needs items as a list of strings")
+        return cheapest_basket(items).to_dict()
+    raise ValueError(f"unknown tool {name}")
 
 
 def _offer(row: dict) -> Offer:

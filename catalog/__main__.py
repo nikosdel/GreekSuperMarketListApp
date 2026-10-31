@@ -1,4 +1,8 @@
-"""Review the catalog tools from the terminal. This command does not call an AI."""
+"""Review the catalog from the terminal.
+
+search, compare, and basket only read Postgres.
+ask sends the question to a free model running on this PC (Ollama).
+"""
 
 from __future__ import annotations
 
@@ -7,6 +11,7 @@ import json
 import sys
 from decimal import Decimal
 
+from catalog.ask import LocalModelError, ask
 from catalog.tools import TOOL_SPECS, cheapest_basket, compare_product, search_products
 
 
@@ -25,7 +30,7 @@ def main(argv: list[str]) -> int:
     _utf8_stdio()
     parser = argparse.ArgumentParser(
         prog="python -m catalog",
-        description="Read the local supermarket catalog. No AI API is called.",
+        description="Read the local supermarket catalog. ask uses a free model on this PC.",
     )
     parser.add_argument("--json", action="store_true", help="print JSON instead of text")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -41,7 +46,11 @@ def main(argv: list[str]) -> int:
     basket = sub.add_parser("basket", help="cheapest pack for each item")
     basket.add_argument("items", nargs="+")
 
-    sub.add_parser("tools", help="list the tool definitions for a later free model")
+    sub.add_parser("tools", help="list the tool definitions for the local model")
+
+    ask_cmd = sub.add_parser("ask", help="ask a free local model, which must call the tools")
+    ask_cmd.add_argument("question")
+    ask_cmd.add_argument("--model", help="Ollama model name, default qwen2.5:3b")
 
     args = parser.parse_args(argv[1:])
     try:
@@ -59,10 +68,28 @@ def main(argv: list[str]) -> int:
             result = cheapest_basket(args.items)
             payload = result.to_dict()
             text = _basket_text(payload)
+        elif args.command == "ask":
+            result = ask(args.question, model=args.model)
+            payload = {
+                "model": result.model,
+                "host": result.host,
+                "traces": [
+                    {
+                        "name": trace.name,
+                        "arguments": trace.arguments,
+                        "result": trace.result,
+                        "source": trace.source,
+                    }
+                    for trace in result.traces
+                ],
+                "answer": result.answer,
+                "draft": result.draft,
+            }
+            text = _ask_text(payload)
         else:
             payload = TOOL_SPECS
             text = json.dumps(TOOL_SPECS, ensure_ascii=False, indent=2)
-    except ValueError as exc:
+    except (ValueError, LocalModelError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
@@ -71,6 +98,53 @@ def main(argv: list[str]) -> int:
     else:
         print(text)
     return 0
+
+
+def _ask_text(result: dict) -> str:
+    lines = [
+        f"Model: {result['model']} at {result['host']}",
+        "Free local model. No API key.",
+        "",
+    ]
+    if not result["traces"]:
+        lines.append("The model answered without calling a catalog tool.")
+        lines.append("")
+    for trace in result["traces"]:
+        label = trace["name"]
+        if trace.get("source") == "question":
+            label += " (from the question)"
+        elif trace.get("source") == "catalog":
+            label += " (combined from the lookups above)"
+        lines.append(f"Tool: {label}")
+        lines.append(f"  arguments: {json.dumps(trace['arguments'], ensure_ascii=False)}")
+        lines.append(_trace_result(trace["name"], trace["arguments"], trace["result"]))
+        lines.append("")
+    lines.append("Answer:")
+    lines.append(result["answer"])
+    if result.get("draft"):
+        lines.append("")
+        lines.append("Model draft (check it against the tools above):")
+        lines.append(result["draft"])
+    return "\n".join(lines)
+
+
+def _trace_result(name: str, arguments: dict, result: dict) -> str:
+    if "error" in result and len(result) == 1:
+        return f"  error: {result['error']}"
+    if name == "search_products":
+        body = _search_text(
+            arguments.get("query", ""),
+            result.get("offers", []),
+            category=arguments.get("category") if isinstance(arguments.get("category"), str) else None,
+        )
+    elif name == "compare_product":
+        body = _compare_text(result)
+    elif name == "cheapest_basket":
+        body = _basket_text(result)
+    else:
+        body = json.dumps(result, ensure_ascii=False)
+    indented = "\n".join(f"  {line}" if line else "" for line in body.splitlines())
+    return indented
 
 
 def _search_text(query: str, offers: list[dict], *, category: str | None) -> str:

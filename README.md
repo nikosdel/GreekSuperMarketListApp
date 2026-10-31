@@ -60,13 +60,20 @@ Requests are spaced 1.5 seconds apart. A full Greece catalog is about a hundred 
 
 ## Catalog tools
 
-`python -m catalog` reads the local database. It does not call an AI API and it does not need an API key. A later free local model can call the same three functions: `search_products`, `compare_product`, and `cheapest_basket`.
+`python -m catalog` reads the local database. `search`, `compare`, and `basket` do not call an AI. `ask` sends the question to Ollama on this PC, a free local model with no API key. The model has to call `search_products`, `compare_product`, or `cheapest_basket` before it states a price.
 
 ```powershell
 python -m catalog search "tostaki 160"
 python -m catalog compare "TOSTAKI Πάριζα Χωρίς γλουτένη 160g"
 python -m catalog basket "tostaki πάριζα 160" "ελαιόλαδο"
 python -m catalog tools
+python -m catalog ask "πού συμφέρει tostaki πάριζα 160 και ελαιόλαδο;"
+```
+
+`ask` needs [Ollama](https://ollama.com/download) and a pulled model. The default model is `qwen2.5:3b`. The command prints every tool call. When the question names more than one product, the answer totals come from `cheapest_basket`. The model's own sentence is printed under it so you can check it.
+
+```powershell
+ollama pull qwen2.5:3b
 ```
 
 Add `--json` to print the raw result. Search accepts `--category` and `--limit` (1 to 30). Each result is the short name, the shop, the category, the pack price, the unit price, and the update date.
