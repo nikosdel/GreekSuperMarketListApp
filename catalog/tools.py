@@ -39,7 +39,7 @@ TOOL_SPECS = [
         "description": (
             "Compare one product across shops. Do not use this for a list of "
             "several products. A name whose category also uses the words "
-            "wins, then the name sold at the most shops."
+            "wins, then the name sold at the most shops, then the cheapest pack."
         ),
         "parameters": {
             "type": "object",
@@ -99,12 +99,14 @@ class NameHit:
     name: str
     shops: int
     category_path: str | None = None
+    cheapest: Decimal | None = None
 
     def to_dict(self) -> dict:
         return {
             "name": self.name,
             "shops": self.shops,
             "category_path": self.category_path,
+            "cheapest": _decimal_text(self.cheapest),
         }
 
 
@@ -343,16 +345,23 @@ def _candidate_names(conn, tokens: list[str], *, limit: int) -> list[NameHit]:
         SELECT
             p.name,
             count(DISTINCT p.chain_id)::int AS shops,
-            min(p.category_path) AS category_path
+            min(p.category_path) AS category_path,
+            min(c.price) AS cheapest
         FROM product p
+        JOIN current_price c ON c.product_id = p.id
         WHERE {where}
         GROUP BY p.name
-        ORDER BY count(DISTINCT p.chain_id) DESC, char_length(p.name), p.name
+        ORDER BY count(DISTINCT p.chain_id) DESC, min(c.price), char_length(p.name), p.name
         LIMIT %s
     """
     rows = conn.execute(sql, params).fetchall()
     hits = [
-        NameHit(name=row["name"], shops=row["shops"], category_path=row["category_path"])
+        NameHit(
+            name=row["name"],
+            shops=row["shops"],
+            category_path=row["category_path"],
+            cheapest=row["cheapest"],
+        )
         for row in rows
     ]
     return _prefer_category_matches(hits, tokens)[:limit]
@@ -374,7 +383,15 @@ def _prefer_category_matches(hits: list[NameHit], tokens: list[str]) -> list[Nam
     best = max((value for value, _hit in scored), default=0)
     if best > 0:
         scored = [(value, hit) for value, hit in scored if value == best]
-    scored.sort(key=lambda pair: (-pair[0], -pair[1].shops, len(pair[1].name), pair[1].name))
+    scored.sort(
+        key=lambda pair: (
+            -pair[0],
+            -pair[1].shops,
+            pair[1].cheapest if pair[1].cheapest is not None else Decimal("999999"),
+            len(pair[1].name),
+            pair[1].name,
+        )
+    )
     return [hit for _value, hit in scored]
 
 

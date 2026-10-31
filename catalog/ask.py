@@ -149,15 +149,24 @@ def ask(question: str, *, model: str | None = None) -> AskResult:
 
 def _finish(model: str, host: str, draft: str, traces: list[ToolTrace]) -> AskResult:
     basket = _latest_full_basket(traces)
-    if basket is None:
-        return AskResult(model=model, host=host, answer=draft, traces=traces)
-    return AskResult(
-        model=model,
-        host=host,
-        answer=_speak_basket(basket),
-        traces=traces,
-        draft=draft,
-    )
+    if basket is not None:
+        return AskResult(
+            model=model,
+            host=host,
+            answer=_speak_basket(basket),
+            traces=traces,
+            draft=draft,
+        )
+    compare = _latest_compare(traces)
+    if compare is not None and compare.get("offers"):
+        return AskResult(
+            model=model,
+            host=host,
+            answer=_speak_compare(compare),
+            traces=traces,
+            draft=draft,
+        )
+    return AskResult(model=model, host=host, answer=draft, traces=traces)
 
 
 def _latest_full_basket(traces: list[ToolTrace]) -> dict | None:
@@ -169,6 +178,31 @@ def _latest_full_basket(traces: list[ToolTrace]) -> dict | None:
         if isinstance(items, list) and len(items) >= 2:
             found = trace.result
     return found
+
+
+def _latest_compare(traces: list[ToolTrace]) -> dict | None:
+    found: dict | None = None
+    for trace in traces:
+        if trace.name == "compare_product" and "error" not in trace.result:
+            found = trace.result
+    return found
+
+
+def _speak_compare(result: dict) -> str:
+    offers = result.get("offers") or []
+    chosen = result.get("chosen_name")
+    if not chosen or not offers:
+        return "No product name contains those words."
+    lines = [chosen]
+    index = 0
+    while index < len(offers):
+        price = offers[index]["price"]
+        shops: list[str] = []
+        while index < len(offers) and offers[index]["price"] == price:
+            shops.append(offers[index]["shop"])
+            index += 1
+        lines.append(f"{price} € at {', '.join(shops)}.")
+    return "\n".join(lines)
 
 
 def _speak_basket(result: dict) -> str:
