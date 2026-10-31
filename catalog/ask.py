@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from decimal import Decimal
 from dataclasses import dataclass
 
 import httpx
@@ -193,16 +194,39 @@ def _speak_compare(result: dict) -> str:
     chosen = result.get("chosen_name")
     if not chosen or not offers:
         return "No product name contains those words."
-    lines = [chosen]
-    index = 0
-    while index < len(offers):
-        price = offers[index]["price"]
-        shops: list[str] = []
-        while index < len(offers) and offers[index]["price"] == price:
-            shops.append(offers[index]["shop"])
-            index += 1
-        lines.append(f"{price} € at {', '.join(shops)}.")
+    chosen_offers = [offer for offer in offers if offer["name"] == chosen]
+    other_offers = [offer for offer in offers if offer["name"] != chosen]
+    lines = [chosen, _price_shops(chosen_offers)]
+    others = _summaries(other_offers)
+    if others:
+        lines.append("")
+        lines.append("Other products:")
+        for price, name, shops in others:
+            lines.append(f"{price} € at {', '.join(shops)} — {name}")
     return "\n".join(lines)
+
+
+def _price_shops(offers: list[dict]) -> str:
+    if not offers:
+        return "No shop price."
+    ordered = sorted(offers, key=lambda offer: (offer["price"], offer["shop"]))
+    cheapest = ordered[0]["price"]
+    shops = [offer["shop"] for offer in ordered if offer["price"] == cheapest]
+    return f"{cheapest} € at {', '.join(shops)}."
+
+
+def _summaries(offers: list[dict]) -> list[tuple[str, str, list[str]]]:
+    grouped: dict[str, list[dict]] = {}
+    for offer in offers:
+        grouped.setdefault(offer["name"], []).append(offer)
+    rows: list[tuple[str, str, list[str]]] = []
+    for name, group in grouped.items():
+        group.sort(key=lambda offer: (offer["price"], offer["shop"]))
+        cheapest = group[0]["price"]
+        shops = [offer["shop"] for offer in group if offer["price"] == cheapest]
+        rows.append((cheapest, name, shops))
+    rows.sort(key=lambda row: (Decimal(row[0]), row[1]))
+    return rows
 
 
 def _speak_basket(result: dict) -> str:

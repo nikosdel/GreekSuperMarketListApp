@@ -220,7 +220,7 @@ def compare_product(query: str) -> CompareResult:
         if not candidates:
             return CompareResult(query=query, chosen_name=None, candidates=[], offers=[])
         chosen = candidates[0].name
-        offers = _offers_for_names(conn, [chosen])
+        offers = _offers_for_names(conn, [hit.name for hit in candidates])
     offers.sort(key=lambda offer: (offer.price, offer.shop))
     return CompareResult(
         query=query,

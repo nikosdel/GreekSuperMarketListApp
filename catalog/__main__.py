@@ -168,23 +168,44 @@ def _compare_text(result: dict) -> str:
         lines.append("No product name contains those words.")
         return "\n".join(lines)
     chosen = next(hit for hit in result["candidates"] if hit["name"] == result["chosen_name"])
-    lines.append(f"Chosen: {result['chosen_name']} ({chosen['shops']} shops)")
-    others = [hit for hit in result["candidates"] if hit["name"] != result["chosen_name"]]
+    lines.append(f"Chosen: {result['chosen_name']} ({_shop_count(chosen['shops'])})")
+    others = _product_summaries(
+        [offer for offer in result["offers"] if offer["name"] != result["chosen_name"]]
+    )
     if others:
-        lines.append("Other names with the same words:")
-        for hit in others:
-            lines.append(f"  {hit['shops']} shops  {hit['name']}")
+        lines.append("Other products:")
+        for price, name, shops in others:
+            lines.append(f"  {price} € at {', '.join(shops)}  {name}")
     category = next(
         (offer["category_path"] for offer in result["offers"] if offer["category_path"]),
         None,
     )
     if category:
         lines.append(f"Category: {category}")
+    chosen_offers = [offer for offer in result["offers"] if offer["name"] == result["chosen_name"]]
     lines.append("")
-    lines.append(f"{len(result['offers'])} shops, cheapest pack price first")
-    for offer in result["offers"]:
+    lines.append(f"{_shop_count(len(chosen_offers))}, cheapest pack price first")
+    for offer in chosen_offers:
         lines.append(_offer_line(offer, include_name=False))
     return "\n".join(lines)
+
+
+def _shop_count(count: int) -> str:
+    return "1 shop" if count == 1 else f"{count} shops"
+
+
+def _product_summaries(offers: list[dict]) -> list[tuple[str, str, list[str]]]:
+    grouped: dict[str, list[dict]] = {}
+    for offer in offers:
+        grouped.setdefault(offer["name"], []).append(offer)
+    rows: list[tuple[Decimal, str, str, list[str]]] = []
+    for name, group in grouped.items():
+        group.sort(key=lambda offer: (Decimal(offer["price"]), offer["shop"]))
+        cheapest = group[0]["price"]
+        shops = [offer["shop"] for offer in group if offer["price"] == cheapest]
+        rows.append((Decimal(cheapest), cheapest, name, shops))
+    rows.sort(key=lambda row: (row[0], row[2]))
+    return [(price, name, shops) for _sort_price, price, name, shops in rows]
 
 
 def _basket_text(result: dict) -> str:
