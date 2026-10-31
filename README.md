@@ -42,9 +42,11 @@ python -m scraper migrate
 
 ## Users and shared lists
 
-`005_users_and_lists.sql` adds accounts and shopping lists. The future UI creates users with `register_user`. The password is stored as a bcrypt hash. The database cannot turn that hash back into the password.
+`005_users_and_lists.sql` adds the tables: `app_user`, `shopping_list`, `shopping_list_member`, and `shopping_list_item`. The backend will create users, share lists, add products, and do the last save. There are no stored procedures for that.
 
-An open list has an invite code. Another user joins with `join_shopping_list`, and both add catalog products with `add_list_product`. `save_shopping_list` is the last save: it stores the price at that moment, clears the invite code, and the list becomes history. A saved list cannot be edited. The next shared list is a new row from `create_shopping_list`.
+A password is a bcrypt hash written by the backend. The database only checks that the stored value looks like a bcrypt hash.
+
+An open list has an invite code. A saved list has no invite code, and it has `saved_at` and `saved_by`. The next shared list is a new row.
 
 A list line points at a catalog product. History keeps the short product name and the saved price. It does not copy product descriptions or images.
 
