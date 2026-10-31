@@ -62,12 +62,19 @@ Requests are spaced 1.5 seconds apart. A full Greece catalog is about a hundred 
 
 `python -m catalog` reads the local database. `search`, `compare`, and `basket` do not call an AI. `ask` sends the question to Ollama on this PC, a free local model with no API key. The model has to call `search_products`, `compare_product`, or `cheapest_basket` before it states a price.
 
-```powershell
-python -m catalog search "tostaki 160"
-python -m catalog compare "TOSTAKI Πάριζα Χωρίς γλουτένη 160g"
-python -m catalog basket "tostaki πάριζα 160" "ελαιόλαδο"
-python -m catalog tools
-python -m catalog ask "πού συμφέρει tostaki πάριζα 160 και ελαιόλαδο;"
+From that folder, type `ask` and the question. Do not type `python`. On this PC the `python` command is a Windows shortcut that answers “The system cannot find the path specified.”
+
+```bat
+ask "πού συμφέρει να πάρω tostaki πάριζα 160 και ελαιόλαδο;"
+```
+
+The other lookups use the Python inside `.venv`:
+
+```bat
+.venv\Scripts\python.exe -m catalog search "tostaki 160"
+.venv\Scripts\python.exe -m catalog compare "TOSTAKI Πάριζα Χωρίς γλουτένη 160g"
+.venv\Scripts\python.exe -m catalog basket "tostaki πάριζα 160" "ελαιόλαδο"
+.venv\Scripts\python.exe -m catalog tools
 ```
 
 `ask` needs [Ollama](https://ollama.com/download) and a pulled model. The default model is `qwen2.5:3b`. The command prints every tool call. When the question names more than one product, the answer totals come from `cheapest_basket`. The model's own sentence is printed under it so you can check it.
