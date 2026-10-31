@@ -39,7 +39,7 @@ TOOL_SPECS = [
         "description": (
             "Compare one product across shops. Do not use this for a list of "
             "several products. A name whose category also uses the words "
-            "wins, then the name sold at the most shops, then the cheapest pack."
+            "wins, then the cheapest pack. Lists that name's pack price at each shop."
         ),
         "parameters": {
             "type": "object",
@@ -216,7 +216,7 @@ def compare_product(query: str) -> CompareResult:
     tokens = _tokens(query)
     with connect() as conn:
         conn.row_factory = dict_row
-        candidates = _candidate_names(conn, tokens, limit=5)
+        candidates = _candidate_names(conn, tokens, limit=5, prefer="price")
         if not candidates:
             return CompareResult(query=query, chosen_name=None, candidates=[], offers=[])
         chosen = candidates[0].name
@@ -241,7 +241,7 @@ def cheapest_basket(items: list[str]) -> BasketResult:
         picked: list[tuple[str, list[NameHit]]] = []
         chosen_names: list[str] = []
         for item in items:
-            candidates = _candidate_names(conn, _tokens(item), limit=5)
+            candidates = _candidate_names(conn, _tokens(item), limit=5, prefer="shops")
             picked.append((item, candidates))
             if candidates:
                 chosen_names.append(candidates[0].name)
@@ -338,9 +338,23 @@ def _number_pattern(token: str) -> str:
     return f"(^|[^0-9]){escaped}([^0-9]|$)"
 
 
-def _candidate_names(conn, tokens: list[str], *, limit: int) -> list[NameHit]:
+def _candidate_names(conn, tokens: list[str], *, limit: int, prefer: str) -> list[NameHit]:
+    by_shops = _name_hits(conn, tokens, order="shops")
+    if prefer == "price":
+        hits = _merge_hits(by_shops, _name_hits(conn, tokens, order="price"))
+    else:
+        hits = by_shops
+    return _prefer_category_matches(hits, tokens, prefer=prefer)[:limit]
+
+
+def _name_hits(conn, tokens: list[str], *, order: str) -> list[NameHit]:
     where, params = _name_match(tokens)
     params.append(80)
+    order_sql = (
+        "min(c.price), count(DISTINCT p.chain_id) DESC, char_length(p.name), p.name"
+        if order == "price"
+        else "count(DISTINCT p.chain_id) DESC, min(c.price), char_length(p.name), p.name"
+    )
     sql = f"""
         SELECT
             p.name,
@@ -351,11 +365,11 @@ def _candidate_names(conn, tokens: list[str], *, limit: int) -> list[NameHit]:
         JOIN current_price c ON c.product_id = p.id
         WHERE {where}
         GROUP BY p.name
-        ORDER BY count(DISTINCT p.chain_id) DESC, min(c.price), char_length(p.name), p.name
+        ORDER BY {order_sql}
         LIMIT %s
     """
     rows = conn.execute(sql, params).fetchall()
-    hits = [
+    return [
         NameHit(
             name=row["name"],
             shops=row["shops"],
@@ -364,10 +378,16 @@ def _candidate_names(conn, tokens: list[str], *, limit: int) -> list[NameHit]:
         )
         for row in rows
     ]
-    return _prefer_category_matches(hits, tokens)[:limit]
 
 
-def _prefer_category_matches(hits: list[NameHit], tokens: list[str]) -> list[NameHit]:
+def _merge_hits(first: list[NameHit], second: list[NameHit]) -> list[NameHit]:
+    merged: dict[str, NameHit] = {hit.name: hit for hit in first}
+    for hit in second:
+        merged.setdefault(hit.name, hit)
+    return list(merged.values())
+
+
+def _prefer_category_matches(hits: list[NameHit], tokens: list[str], *, prefer: str) -> list[NameHit]:
     """Prefer a name whose category uses the query words.
 
     "ελαιόλαδο" is sold as tuna and as oil. The oil category contains the
@@ -383,15 +403,13 @@ def _prefer_category_matches(hits: list[NameHit], tokens: list[str]) -> list[Nam
     best = max((value for value, _hit in scored), default=0)
     if best > 0:
         scored = [(value, hit) for value, hit in scored if value == best]
-    scored.sort(
-        key=lambda pair: (
-            -pair[0],
-            -pair[1].shops,
-            pair[1].cheapest if pair[1].cheapest is not None else Decimal("999999"),
-            len(pair[1].name),
-            pair[1].name,
-        )
-    )
+    def price_key(hit: NameHit) -> Decimal:
+        return hit.cheapest if hit.cheapest is not None else Decimal("999999")
+
+    if prefer == "price":
+        scored.sort(key=lambda pair: (-pair[0], price_key(pair[1]), -pair[1].shops, len(pair[1].name), pair[1].name))
+    else:
+        scored.sort(key=lambda pair: (-pair[0], -pair[1].shops, price_key(pair[1]), len(pair[1].name), pair[1].name))
     return [hit for _value, hit in scored]
 
 
