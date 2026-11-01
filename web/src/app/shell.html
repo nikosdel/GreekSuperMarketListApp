@@ -1,0 +1,23 @@
+<header class="bar">
+  <div class="column bar-inner">
+    <a class="mark" routerLink="/" (click)="closeMenu()" aria-label="Open lists">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 5.5h12M6 5.5v14M6 10h12M6 14.5h8" />
+      </svg>
+      <span>Lists</span>
+    </a>
+    <button class="text menu-button" type="button" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen()">
+      Menu
+    </button>
+    <nav [class.open]="menuOpen()">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Open</a>
+      <a routerLink="/history" routerLinkActive="active" (click)="closeMenu()">History</a>
+      <a routerLink="/notices" routerLinkActive="active" (click)="closeMenu()">Notices</a>
+      <span class="who">{{ account()?.display_name }}</span>
+      <button class="text" type="button" (click)="logout()">Log out</button>
+    </nav>
+  </div>
+</header>
+<main class="column page">
+  <router-outlet />
+</main>

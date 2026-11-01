@@ -1,0 +1,85 @@
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+
+@if (list(); as list) {
+  <p class="back"><a routerLink="/">Open lists</a> · <a routerLink="/history">History</a></p>
+  <header class="title-row">
+    <div>
+      <h1>{{ list.title }}</h1>
+      @if (list.status === 'saved') {
+        <p class="lead">Saved by {{ list.saved_by_name || 'a member' }} on {{ when(list.saved_at) }}. The prices below are the ones copied then.</p>
+      } @else {
+        <p class="lead">Everyone on this list can add, change, and remove products. Saving copies the current prices and locks the list.</p>
+      }
+    </div>
+    @if (list.status === 'open') {
+      <button class="primary" type="button" (click)="save()">Save list</button>
+    }
+  </header>
+
+  @if (notice()) {
+    <p class="note">{{ notice() }}</p>
+  }
+
+  @if (list.status === 'open') {
+    <p class="code">
+      Invite code <strong>{{ list.invite_code }}</strong>
+      <button class="text" type="button" (click)="copyCode(list.invite_code || '')">Copy</button>
+    </p>
+    <form class="split" [formGroup]="form" (ngSubmit)="search()">
+      <label>
+        Add a product
+        <input type="search" formControlName="query" placeholder="γάλα 1lt" />
+      </label>
+      <button class="secondary" type="submit" [disabled]="searching()">Search catalog</button>
+    </form>
+    @if (results().length) {
+      <ul class="stack">
+        @for (product of results(); track product.id) {
+          <li class="line">
+            <span>
+              <strong>{{ product.name }}</strong>
+              <span class="muted">{{ product.chain_name }}</span>
+            </span>
+            <span class="price">{{ euro(product.price) }}</span>
+            <button class="primary" type="button" (click)="add(product)">Add</button>
+          </li>
+        }
+      </ul>
+    }
+  }
+
+  <h2>On the list</h2>
+  @if (!list.items.length) {
+    <p class="empty">Nothing on this list yet.</p>
+  } @else {
+    <ul class="stack">
+      @for (item of list.items; track item.id) {
+        <li class="line">
+          <span>
+            <strong>{{ item.product_name }}</strong>
+            <span class="muted">{{ item.chain_name }}@if (lineUnit(item)) { · {{ lineUnit(item) }} }</span>
+          </span>
+          @if (list.status === 'open') {
+            <label class="qty">
+              Qty
+              <input type="number" min="0.001" step="1" [value]="item.quantity" (change)="changeQuantity(item.id, $any($event.target).value)" />
+            </label>
+            <button class="text" type="button" (click)="remove(item.id)">Remove</button>
+          } @else {
+            <span class="muted">{{ amount(item.quantity) }}</span>
+          }
+          <span class="price">{{ euro(linePrice(item)) }}</span>
+        </li>
+      }
+    </ul>
+  }
+
+  <h2>People</h2>
+  <ul class="people">
+    @for (member of list.members; track member.id) {
+      <li>{{ member.display_name }} <span class="muted">{{ member.role }}</span></li>
+    }
+  </ul>
+}

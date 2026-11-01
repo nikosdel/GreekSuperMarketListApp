@@ -2,6 +2,7 @@ import express from "express";
 import helmet from "helmet";
 import { registerRoutes } from "./auth.js";
 import { sendError } from "./errors.js";
+import { catalogRoutes } from "./catalog.js";
 import { listRoutes } from "./lists.js";
 import { notificationRoutes } from "./notifications.js";
 
@@ -28,6 +29,7 @@ export function createApp() {
   });
   registerRoutes(app);
   notificationRoutes(app);
+  catalogRoutes(app);
   listRoutes(app);
   app.use((error, _req, res, _next) => {
     sendError(res, error);

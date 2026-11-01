@@ -1,0 +1,26 @@
+<h1>History</h1>
+<p class="lead">Saved lists keep the prices from the moment they were saved. They stay locked.</p>
+
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+
+@if (lists() === null) {
+  <p class="muted">Loading history.</p>
+} @else if (saved().length === 0) {
+  <p class="empty">No saved lists yet.</p>
+} @else {
+  <ul class="stack">
+    @for (list of saved(); track list.id) {
+      <li>
+        <a class="line" [routerLink]="['/lists', list.id]">
+          <span>
+            <strong>{{ list.title }}</strong>
+            <span class="muted">Saved by {{ list.saved_by_name || 'a member' }}</span>
+          </span>
+          <span class="muted">{{ when(list.saved_at) }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+}

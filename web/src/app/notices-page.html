@@ -1,0 +1,23 @@
+<h1>Notices</h1>
+<p class="lead">These are changes other people made on lists you share. Your own edits are not listed here.</p>
+
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+
+@if (notices() === null) {
+  <p class="muted">Loading notices.</p>
+} @else if (notices()!.length === 0) {
+  <p class="empty">No notices yet.</p>
+} @else {
+  <ul class="stack">
+    @for (notice of notices(); track notice.id) {
+      <li>
+        <a class="line" [class.unread]="!notice.read_at" [routerLink]="['/lists', notice.list_id]" (click)="markRead(notice)">
+          <span>{{ notice.message }}</span>
+          <span class="muted">{{ when(notice.created_at) }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+}

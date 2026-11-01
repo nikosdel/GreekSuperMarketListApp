@@ -1,0 +1,42 @@
+<h1>Open lists</h1>
+<p class="lead">A list stays editable by everyone on it until someone saves it.</p>
+
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+
+<form class="split" [formGroup]="form" (ngSubmit)="create()">
+  <label>
+    New list
+    <input type="text" formControlName="title" placeholder="Weekly shop" />
+  </label>
+  <button class="primary" type="submit">Create list</button>
+</form>
+
+<form class="split secondary-job" [formGroup]="form" (ngSubmit)="join()">
+  <label>
+    Invite code
+    <input type="text" formControlName="invite_code" autocomplete="off" />
+  </label>
+  <button class="secondary" type="submit">Join list</button>
+</form>
+
+@if (lists() === null) {
+  <p class="muted">Loading lists.</p>
+} @else if (openLists().length === 0) {
+  <p class="empty">No open lists yet.</p>
+} @else {
+  <ul class="stack">
+    @for (list of openLists(); track list.id) {
+      <li>
+        <a class="line" [routerLink]="['/lists', list.id]">
+          <span>
+            <strong>{{ list.title }}</strong>
+            <span class="muted">{{ list.role }}</span>
+          </span>
+          <span class="muted">{{ list.invite_code }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+}

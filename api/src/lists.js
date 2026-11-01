@@ -36,11 +36,13 @@ async function createList(req, res) {
 
 async function myLists(req, res) {
   const rows = await pool.query(
-    `SELECT list.id, list.title, list.status, list.invite_code, list.created_at, list.saved_at, member.role
+    `SELECT list.id, list.title, list.status, list.invite_code, list.created_at, list.saved_at,
+            member.role, saver.display_name AS saved_by_name
      FROM shopping_list list
      JOIN shopping_list_member member ON member.list_id = list.id
+     LEFT JOIN app_user saver ON saver.id = list.saved_by
      WHERE member.user_id = $1
-     ORDER BY list.created_at DESC`,
+     ORDER BY COALESCE(list.saved_at, list.created_at) DESC`,
     [req.userId],
   );
   res.json({ lists: rows.rows.map(publicList) });
@@ -87,7 +89,11 @@ async function listDetail(req, res) {
   const listId = cleanId(req.params.id);
   await assertMember(listId, req.userId);
   const list = await pool.query(
-    `SELECT id, title, status, invite_code, created_at, saved_at FROM shopping_list WHERE id = $1`,
+    `SELECT list.id, list.title, list.status, list.invite_code, list.created_at, list.saved_at,
+            saver.display_name AS saved_by_name
+     FROM shopping_list list
+     LEFT JOIN app_user saver ON saver.id = list.saved_by
+     WHERE list.id = $1`,
     [listId],
   );
   const members = await pool.query(
@@ -99,10 +105,13 @@ async function listDetail(req, res) {
     [listId],
   );
   const items = await pool.query(
-    `SELECT id, product_id, quantity, product_name, chain_name, price_at_save, unit_price_at_save, added_by
-     FROM shopping_list_item
-     WHERE list_id = $1
-     ORDER BY id`,
+    `SELECT item.id, item.product_id, item.quantity, item.product_name, item.chain_name,
+            item.price_at_save, item.unit_price_at_save, item.added_by,
+            current_price.price AS current_price, current_price.unit_price_text
+     FROM shopping_list_item item
+     LEFT JOIN current_price ON current_price.product_id = item.product_id
+     WHERE item.list_id = $1
+     ORDER BY item.id`,
     [listId],
   );
   res.json({
@@ -317,6 +326,7 @@ function publicList(row) {
     role: row.role,
     created_at: row.created_at,
     saved_at: row.saved_at,
+    saved_by_name: row.saved_by_name || null,
   };
 }
 
@@ -327,8 +337,10 @@ function publicItem(row) {
     quantity: row.quantity,
     product_name: row.product_name,
     chain_name: row.chain_name,
-    price_at_save: row.price_at_save,
-    unit_price_at_save: row.unit_price_at_save,
+    price_at_save: row.price_at_save === null || row.price_at_save === undefined ? null : Number(row.price_at_save),
+    unit_price_at_save: row.unit_price_at_save === null || row.unit_price_at_save === undefined ? null : Number(row.unit_price_at_save),
+    current_price: row.current_price === null || row.current_price === undefined ? null : Number(row.current_price),
+    unit_price_text: row.unit_price_text || null,
     added_by: row.added_by === null ? null : Number(row.added_by),
   };
 }

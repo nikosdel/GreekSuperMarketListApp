@@ -16,7 +16,7 @@ The look is our own SCSS, not a visual component kit. Angular Material, Bootstra
 
 The interface is responsive. The same layout works at phone width and at desktop width. There is no separate mobile site.
 
-The API already running is Node and Express at http://127.0.0.1:3000. Postgres holds the catalog, accounts, and lists. Python loads the catalog and answers local price questions. The Angular app is not created yet.
+The API is Node and Express at http://127.0.0.1:3000. Postgres holds the catalog, accounts, and lists. Python loads the catalog and answers local price questions. The Angular app is in `web/` and is served at http://localhost:4200.
 
 ## Users
 

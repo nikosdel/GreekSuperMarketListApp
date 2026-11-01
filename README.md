@@ -51,6 +51,8 @@ cd ..
 node api/src/server.js
 ```
 
+The site is the Angular app in `web/`. From that folder, `npx ng serve` opens it at http://localhost:4200. The screens are register, login, open lists, a list, history, and notices. Adding a product uses `GET /catalog/search`.
+
 Register with `POST /users`. Log in with `POST /oauth/token` using `grant_type=password`. The access token expires (15 minutes by default). `grant_type=refresh_token` issues a new pair and revokes the old refresh token. Send `Authorization: Bearer <access_token>` on list and notification routes.
 
 Any member can add, change, or remove products on an open list. The other members get a row in `list_notification` and, if they are connected to `GET /notifications/stream`, the same event immediately. `POST /notifications/ticket` gives a 30-second single-use ticket for a browser stream. This is an in-app notice. Phone push waits until the app has a device.
