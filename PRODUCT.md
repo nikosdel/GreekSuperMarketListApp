@@ -10,7 +10,11 @@ The site and the phone apps share one Angular interface. Capacitor only supplies
 
 ## Stack
 
-Angular for the site. Capacitor wraps that same build for Android and iPhone. The Android project can be built on this PC. The iPhone shell is compiled in Xcode on a Mac.
+Angular for the site, with SCSS for the styles. Capacitor wraps that same build for Android and iPhone. The Android project can be built on this PC. The iPhone shell is compiled in Xcode on a Mac.
+
+The look is our own SCSS, not a visual component kit. Angular Material, Bootstrap, and PrimeNG were declined because those kits would decide the screens. Angular CDK may be used later for focus and overlays only. It does not supply the visual design.
+
+The same interface has to work at phone width and at desktop width. One layout adapts. There is no separate mobile site.
 
 The API already running is Node and Express at http://127.0.0.1:3000. Postgres holds the catalog, accounts, and lists. Python loads the catalog and answers local price questions. The Angular app is not created yet.
 
@@ -70,6 +74,6 @@ The mark is a short shopping list. It is not a shopping cart, and it has no item
 
 - A price on screen is a catalog price, or it is absent.
 - Every member of an open list can manage it. Saving is when the prices are kept and the list stops changing.
-- One Angular interface is the website and both phone apps.
+- One Angular interface is the website and both phone apps. The layout adapts from phone width to desktop width.
 - Show the short name, the shop, and the price. Leave out images and long descriptions.
 - The other people on the list hear about a change. The person who made it does not get that notice.
