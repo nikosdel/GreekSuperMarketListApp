@@ -32,7 +32,7 @@ The catalog is loaded on this PC from posokanei.gov.gr, Greece only, with at lea
 
 A local command, `ask`, sends a question to Ollama on this PC (`qwen2.5:3b`, no paid API key). The model must call the catalog tools before a price is stated. The model's own sentence is a draft. The printed answer for a comparison or a multi-item basket is built from the tool result.
 
-The screens to build are worked in: account, lists, and notices. They are app screens. A marketing page was not requested. No visual direction was dealt in this init.
+The screens to build are worked in: account, lists, notices, and history. They are app screens. A marketing page was not requested. No visual direction was dealt in this init.
 
 ## Capabilities and Constraints
 
@@ -45,12 +45,13 @@ Confirmed:
 - Catalog results show the short name, the shop, the category, the pack price, the unit price, and the site's update date. Everyday Greek is folded so a phrase like "ένα γάλα 1 λίτρου" can match `γάλα` and `1lt`.
 - A one-product comparison picks the cheapest matching pack and also shows the other matching products' cheapest shop prices. A two-item basket can show a split across shops and a one-shop total. A tie lists every tied shop.
 - Phone lock-screen alerts are not built. They are planned for the installed apps through Firebase on Android and Apple push on iPhone.
+- History is a page of lists this member already saved. Each entry shows the list title, when it was saved, who saved it, and the lines with the pack price and unit price copied at save. A saved list stays locked. `GET /lists` already returns `status` and `saved_at` for the member's lists, and the list detail returns those saved prices. A chart of one product's price over time was not requested.
 
 Undecided:
 
 - Public product name. The only title on record is the repository heading "Super Market Web App".
 - Interface language. The catalog is Greek. Whether the screens are Greek, English, or both was not decided.
-- Whether the first Angular screens include the price question, or only account, lists, and notices. The agreed first build is account, lists, and notices.
+- Whether the first Angular screens include the price question, or only account, lists, notices, and history. The agreed first build is account, lists, notices, and history.
 - A Firebase project for phone push does not exist yet.
 - No accessibility standard was set.
 
@@ -59,7 +60,11 @@ Undecided:
 - README.md describes the catalog fields, the shared-list API, and the `ask` command.
 - The Express API is in `api/`. Migration `007_api_tokens_and_notifications.sql` adds refresh tokens and list notices.
 - The loaded catalog is the Greece extract from posokanei.gov.gr. Chain names on that site include Χαλκιαδάκης, My Market, Γαλαξίας, Κρητικός, and Μασούτης.
-- There is no logo, no product photography, and no written brand voice. Do not invent prices, testimonials, shopper counts, or product images. Product images and long descriptions stay out of the product even when the source site has them.
+- There is no logo file yet, no product photography, and no written brand voice. Do not invent prices, testimonials, shopper counts, or product images. Product images and long descriptions stay out of the product even when the source site has them.
+
+## Brand Commitments
+
+The mark is a short shopping list. It is not a shopping cart, and it has no item-count badge. A small price may sit beside the list only when the list alone is unclear. No logo file has been drawn. No public name, color, or typeface is set.
 
 ## Product Principles
 
