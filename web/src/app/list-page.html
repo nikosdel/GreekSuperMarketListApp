@@ -35,9 +35,9 @@
       <button class="secondary" type="submit" [disabled]="searching()">Search catalog</button>
     </form>
     @if (results().length) {
-      <ul class="stack">
+      <ul class="sheet">
         @for (product of results(); track product.id) {
-          <li class="line">
+          <li class="row">
             <span>
               <strong>{{ product.name }}</strong>
               <span class="muted">{{ product.chain_name }}</span>
@@ -52,11 +52,11 @@
 
   <h2>On the list</h2>
   @if (!list.items.length) {
-    <p class="empty">Nothing on this list yet.</p>
+    <p class="sheet empty">Nothing on this list yet. Search the catalog and add a product.</p>
   } @else {
-    <ul class="stack">
+    <ul class="sheet">
       @for (item of list.items; track item.id) {
-        <li class="line">
+        <li class="row">
           <span>
             <strong>{{ item.product_name }}</strong>
             <span class="muted">{{ item.chain_name }}@if (lineUnit(item)) { · {{ lineUnit(item) }} }</span>

@@ -8,12 +8,12 @@
 @if (notices() === null) {
   <p class="muted">Loading notices.</p>
 } @else if (notices()!.length === 0) {
-  <p class="empty">No notices yet.</p>
+  <p class="sheet empty">No notices yet. They show up when someone else changes a list you share.</p>
 } @else {
-  <ul class="stack">
+  <ul class="sheet">
     @for (notice of notices(); track notice.id) {
       <li>
-        <a class="line" [class.unread]="!notice.read_at" [routerLink]="['/lists', notice.list_id]" (click)="markRead(notice)">
+        <a class="row" [class.unread]="!notice.read_at" [routerLink]="['/lists', notice.list_id]" (click)="markRead(notice)">
           <span>{{ notice.message }}</span>
           <span class="muted">{{ when(notice.created_at) }}</span>
         </a>

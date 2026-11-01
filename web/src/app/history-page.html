@@ -8,12 +8,12 @@
 @if (lists() === null) {
   <p class="muted">Loading history.</p>
 } @else if (saved().length === 0) {
-  <p class="empty">No saved lists yet.</p>
+  <p class="sheet empty">No saved lists yet. Saving a list keeps it here.</p>
 } @else {
-  <ul class="stack">
+  <ul class="sheet">
     @for (list of saved(); track list.id) {
       <li>
-        <a class="line" [routerLink]="['/lists', list.id]">
+        <a class="row" [routerLink]="['/lists', list.id]">
           <span>
             <strong>{{ list.title }}</strong>
             <span class="muted">Saved by {{ list.saved_by_name || 'a member' }}</span>

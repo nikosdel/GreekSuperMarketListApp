@@ -1,31 +1,30 @@
 :root {
-  --ground: #f4f3f1;
-  --surface: #ffffff;
-  --border: #e6e6e6;
-  --text: #0a0a0a;
-  --muted: #5c5c5c;
-  --accent: #141414;
+  --ground: #ffffff;
+  --ink: #121212;
+  --muted: #5e5e5e;
+  --line: #e6e6e6;
+  --soft: #f3f3f3;
   --price: #1d5fbf;
   --danger: #8d1d22;
-  --radius: 8px;
-  --row: 44px;
   --font: "Geist", "Segoe UI", sans-serif;
 }
 
 * { box-sizing: border-box; }
 
-html, body {
+html, body, app-root {
   margin: 0;
+  min-height: 100%;
+}
+
+html, body {
   background: var(--ground);
-  color: var(--text);
+  color: var(--ink);
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.45;
 }
 
-body {
-  min-height: 100vh;
-}
+app-root { display: block; }
 
 a { color: inherit; }
 
@@ -37,21 +36,20 @@ button, input {
 button { cursor: pointer; }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
 ::selection {
   background: #d9e4f7;
-  color: var(--text);
 }
 
 h1, h2, p { margin: 0; }
 
 h1 {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 500;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 h2 {
@@ -61,24 +59,24 @@ h2 {
 }
 
 .column {
-  width: min(1120px, calc(100% - 32px));
+  width: min(760px, calc(100% - 40px));
   margin-inline: auto;
 }
 
-.page { padding: 28px 0 64px; }
+.page { padding: 36px 0 72px; }
 
 .bar {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--ground);
-  border-bottom: 1px solid var(--border);
+  background: #fff;
+  border-bottom: 1px solid var(--line);
 }
 
 .bar-inner {
   display: flex;
   align-items: center;
-  min-height: 48px;
+  min-height: 56px;
   gap: 16px;
 }
 
@@ -90,7 +88,7 @@ h2 {
   font-weight: 500;
 }
 
-.mark svg {
+.mark svg, .brand-mark svg {
   width: 22px;
   height: 22px;
   fill: none;
@@ -111,52 +109,79 @@ h2 {
   color: var(--muted);
 }
 
-.bar nav a.active { color: var(--text); }
+.bar nav a.active { color: var(--ink); }
 
 .menu-button { display: none; }
 
-.who { color: var(--muted); }
+.who, .lead, .muted, .aside { color: var(--muted); }
 
-.lead, .muted, .aside { color: var(--muted); }
+.lead { max-width: 46ch; margin-top: 8px; }
 
-.lead { max-width: 62ch; margin-top: 8px; }
-
-.auth, .split, .stack, .title-row { margin-top: 22px; }
+.stage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
 
 .auth {
-  max-width: 420px;
+  width: min(400px, 100%);
+  padding: 32px 28px 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
 }
+
+.brand-mark {
+  display: inline-flex;
+  margin-bottom: 18px;
+}
+
+.auth form, .auth .fields {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.auth .primary { width: 100%; margin-top: 4px; }
+
+.aside { margin-top: 18px; font-size: 14px; }
+
+.aside a { color: var(--price); }
 
 label {
   display: grid;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
 
 input {
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
 }
 
 .primary, .secondary, .text {
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 6px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 10px;
   border: 0;
 }
 
 .primary {
-  background: var(--accent);
+  background: var(--ink);
   color: white;
 }
 
-.secondary { background: #e5e5e5; }
+.secondary {
+  background: var(--soft);
+}
 
 .text {
+  height: auto;
   background: transparent;
   padding-inline: 0;
   color: var(--muted);
@@ -164,36 +189,52 @@ input {
 
 .primary:disabled, .secondary:disabled { opacity: 0.5; }
 
+.board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 28px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
+
 .split {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: end;
+  gap: 10px;
+  align-content: end;
 }
 
-.secondary-job { margin-top: 12px; }
-
-.stack {
+.sheet {
   list-style: none;
+  margin: 22px 0 0;
   padding: 0;
-  display: grid;
-  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
 }
 
-.line {
+.row {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
-  min-height: var(--row);
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  min-height: 64px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
   text-decoration: none;
 }
 
-.line > span:first-child { display: grid; flex: 1; min-width: 180px; }
+.sheet > :last-child,
+.sheet > :last-child .row { border-bottom: 0; }
+
+.row > span:first-child {
+  display: grid;
+  flex: 1;
+  min-width: 180px;
+  gap: 2px;
+}
 
 .price {
   color: var(--price);
@@ -202,7 +243,7 @@ input {
   white-space: nowrap;
 }
 
-.unread { font-weight: 500; }
+.unread .row, a.unread { font-weight: 500; }
 
 .title-row, .code, .back, .people {
   display: flex;
@@ -220,37 +261,39 @@ input {
   flex-wrap: wrap;
 }
 
-.qty input { width: 72px; }
+.qty input { width: 84px; }
 
 .empty, .note, .error { margin-top: 16px; }
 
+.empty {
+  padding: 28px 16px;
+  text-align: center;
+}
+
 .error { color: var(--danger); }
 
-.note { color: var(--text); }
-
 @media (max-width: 720px) {
+  .column { width: min(760px, calc(100% - 28px)); }
+
   .menu-button { display: inline-flex; margin-left: auto; }
 
   .bar nav {
     display: none;
     position: absolute;
-    top: 48px;
+    top: 56px;
     left: 0;
     right: 0;
     margin: 0;
     padding: 8px 16px 16px;
-    background: var(--ground);
-    border-bottom: 1px solid var(--border);
+    background: #fff;
+    border-bottom: 1px solid var(--line);
     flex-direction: column;
     align-items: flex-start;
   }
 
   .bar nav.open { display: flex; }
 
-  .split, .line, .title-row {
-    grid-template-columns: 1fr;
-    display: grid;
-  }
+  .board { grid-template-columns: 1fr; }
 
-  .title-row { align-items: start; }
+  .title-row { align-items: start; flex-direction: column; }
 }
