@@ -42,7 +42,18 @@ python -m scraper migrate
 
 ## Users and shared lists
 
-`005_users_and_lists.sql` adds the tables: `app_user`, `shopping_list`, `shopping_list_member`, and `shopping_list_item`. The backend will create users, share lists, add products, and do the last save. There are no stored procedures for that.
+`005_users_and_lists.sql` adds the tables: `app_user`, `shopping_list`, `shopping_list_member`, and `shopping_list_item`. The Express API in `api/` creates users, shares lists, adds products, and does the last save. There are no stored procedures for that.
+
+```powershell
+cd api
+npm install
+cd ..
+node api/src/server.js
+```
+
+Register with `POST /users`. Log in with `POST /oauth/token` using `grant_type=password`. The access token expires (15 minutes by default). `grant_type=refresh_token` issues a new pair and revokes the old refresh token. Send `Authorization: Bearer <access_token>` on list and notification routes.
+
+Any member can add, change, or remove products on an open list. The other members get a row in `list_notification` and, if they are connected to `GET /notifications/stream`, the same event immediately. `POST /notifications/ticket` gives a 30-second single-use ticket for a browser stream. This is an in-app notice. Phone push waits until the app has a device.
 
 A password is a bcrypt hash written by the backend. The database only checks that the stored value looks like a bcrypt hash.
 

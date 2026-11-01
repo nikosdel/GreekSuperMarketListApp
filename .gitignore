@@ -4,6 +4,7 @@ lidl-run.log
 masoutis-run.log
 sklavenitis-run.log
 posokanei-run.log
+node_modules/
 __pycache__/
 *.py[cod]
 .pytest_cache/
