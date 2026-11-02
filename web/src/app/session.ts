@@ -122,7 +122,11 @@ export async function request(path: string, init: RequestInit = {}): Promise<Res
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  return fetch(`${API}${path}`, { ...init, headers });
+  try {
+    return await fetch(`${API}${path}`, { ...init, headers });
+  } catch {
+    throw new Error("The app could not reach the API. Leave this page open and try again.");
+  }
 }
 
 export async function problem(response: Response): Promise<string> {

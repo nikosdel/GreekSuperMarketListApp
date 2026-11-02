@@ -9,12 +9,25 @@ import { notificationRoutes } from "./notifications.js";
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: false,
+    strictTransportSecurity: false,
+  }));
   app.use(express.json({ limit: "20kb" }));
   app.use(express.urlencoded({ extended: false, limit: "20kb" }));
-  const origin = process.env.CORS_ORIGIN || "http://localhost:4200";
+  const allowedOrigins = new Set(
+    (process.env.CORS_ORIGIN || "http://localhost:4200,http://127.0.0.1:4200")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
   app.use((req, res, next) => {
-    res.set("Access-Control-Allow-Origin", origin);
+    const requestOrigin = req.get("origin");
+    if (requestOrigin && allowedOrigins.has(requestOrigin)) {
+      res.set("Access-Control-Allow-Origin", requestOrigin);
+    }
     res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
     res.set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
     res.set("Vary", "Origin");
