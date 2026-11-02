@@ -9,6 +9,7 @@ export class Basket {
   private api = inject(Api);
   readonly lists = signal<ShoppingList[]>([]);
   readonly activeId = signal<number | null>(readId());
+  readonly pick = signal(0);
 
   active(): ShoppingList | undefined {
     return this.lists().find((list) => list.id === this.activeId());
@@ -25,6 +26,7 @@ export class Basket {
 
   choose(id: number | null): void {
     this.activeId.set(id);
+    this.pick.update((value) => value + 1);
     if (id) {
       localStorage.setItem(KEY, String(id));
     } else {

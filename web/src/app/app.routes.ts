@@ -9,7 +9,8 @@ export const routes: Routes = [
     canActivate: [signedIn],
     loadComponent: () => import('./shell').then((m) => m.Shell),
     children: [
-      { path: '', loadComponent: () => import('./catalog-page').then((m) => m.CatalogPage) },
+      { path: '', loadComponent: () => import('./dashboard-page').then((file) => file.DashboardPage) },
+      { path: 'catalog', loadComponent: () => import('./catalog-page').then((m) => m.CatalogPage) },
       { path: 'lists', loadComponent: () => import('./lists-page').then((m) => m.ListsPage) },
       { path: 'history', loadComponent: () => import('./history-page').then((m) => m.HistoryPage) },
       { path: 'lists/:id', loadComponent: () => import('./list-page').then((m) => m.ListPage) },

@@ -103,7 +103,7 @@ export class CatalogPage {
 
   async show(change: { path?: string; offset?: number }): Promise<void> {
     const value = this.form.getRawValue();
-    await this.router.navigate(['/'], {
+    await this.router.navigate(['/catalog'], {
       queryParams: {
         path: change.path === undefined ? this.path() : change.path,
         q: value.q.trim(),

@@ -1,0 +1,302 @@
+<div class="dashboard">
+  <section class="panel" id="categories">
+    <header class="panel-head">
+      <div>
+        <h2>Categories</h2>
+        <p class="muted">{{ path() || 'Pick a shelf. Search and prices stay in the products section.' }}</p>
+      </div>
+      @if (path()) {
+        <button class="back-button" type="button" (click)="back()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6 8.5 12l6 6" /></svg>
+          Back to {{ parentLabel() }}
+        </button>
+      }
+    </header>
+    <div class="panel-body">
+      <p class="crumbs">
+        <button type="button" class="text" (click)="go('')">All categories</button>
+        @for (crumb of crumbs(); track crumb; let index = $index) {
+          <span aria-hidden="true">/</span>
+          <button type="button" class="text" (click)="go(crumbPath(index))">{{ crumb }}</button>
+        }
+      </p>
+      @if (loadingShelf() && !categories().length) {
+        <p class="muted">Loading categories.</p>
+      } @else if (!categories().length) {
+        <p class="empty">This shelf has no further categories. The products are in the next section.</p>
+      } @else {
+        <div class="choices">
+          @for (category of categories(); track category.name) {
+            <button type="button" class="choice" (click)="chooseCategory(category.name)">
+              <img [src]="picture(category.name)" alt="" />
+              <span class="choice-copy">
+                <strong>{{ category.name }}</strong>
+                <span class="muted">{{ category.products }} products</span>
+              </span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <div class="dash-work">
+    <section class="panel" id="products">
+      <header class="panel-head">
+        <div>
+          <h2>Products</h2>
+          <p class="muted">
+            @if (path()) {
+              {{ shelfTitle() }} · search, shop, and sort stay inside this shelf.
+            } @else {
+              Open a category above, or search the whole catalog.
+            }
+          </p>
+        </div>
+        @if (total()) {
+          <span class="muted">{{ total() }}</span>
+        }
+      </header>
+      <div class="panel-body">
+        @if (catalogError()) {
+          <p class="error">{{ catalogError() }}</p>
+        }
+        @if (catalogNotice()) {
+          <p class="note">{{ catalogNotice() }}</p>
+        }
+        <form class="filters" [formGroup]="form" (ngSubmit)="applyFilters()">
+          <label>
+            @if (path()) { Search in this category } @else { Search }
+            <input type="search" formControlName="q" placeholder="Name or size" />
+          </label>
+          <label>
+            Shop
+            <select formControlName="chain">
+              <option value="">All shops</option>
+              @for (chain of chains(); track chain) {
+                <option [value]="chain">{{ chain }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            Sort
+            <select formControlName="sort">
+              <option value="price">Cheapest</option>
+              <option value="name">Name</option>
+            </select>
+          </label>
+          <button class="primary" type="submit">Apply</button>
+        </form>
+
+        @if (loadingProducts()) {
+          <p class="muted">Loading products.</p>
+        } @else if (products(); as rows) {
+          @if (!rows.length) {
+            <p class="empty">No products match these filters.</p>
+          } @else {
+            <div class="price-sheet">
+              <div class="price-head">
+                <span></span>
+                <span>Product</span>
+                <span>Shop</span>
+                <span class="num">Unit</span>
+                <span class="num">Price</span>
+                <span></span>
+              </div>
+              @for (product of rows; track product.id) {
+                <div class="price-row">
+                  @if (product.image_url) {
+                    <img class="thumb" [src]="product.image_url" [alt]="product.name" />
+                  } @else {
+                    <span class="thumb"></span>
+                  }
+                  <span class="name">
+                    <strong>{{ product.name }}</strong>
+                    <span class="muted phone-meta">{{ detailLine(product) }}</span>
+                  </span>
+                  <span class="shop desk">{{ product.chain_name }}</span>
+                  <span class="unit desk">{{ product.unit_price_text || '—' }}</span>
+                  <span class="price">{{ euro(product.price) }}</span>
+                  <button class="primary" type="button" (click)="add(product)">Add</button>
+                </div>
+              }
+            </div>
+            <div class="pager">
+              <button class="secondary" type="button" [disabled]="form.controls.offset.value <= 0" (click)="page(form.controls.offset.value - limit)">Previous</button>
+              <button class="secondary" type="button" [disabled]="form.controls.offset.value + limit >= total()" (click)="page(form.controls.offset.value + limit)">Next</button>
+            </div>
+          }
+        } @else {
+          <p class="empty">Choose a category, or type a name and apply.</p>
+        }
+      </div>
+    </section>
+
+    <section class="panel list-panel" id="shopping-list">
+      <header class="panel-head">
+        <div>
+          <h2>Shopping list</h2>
+          <p class="muted">
+            @if (detail(); as list) {
+              {{ list.title }}
+              @if (list.status === 'saved') {
+                · saved {{ when(list.saved_at) }}
+              } @else {
+                · shared and still open
+              }
+            } @else {
+              The list you are filling from this page.
+            }
+          </p>
+        </div>
+        @if (detail(); as list) {
+          @if (list.status === 'open') {
+            <button class="primary" type="button" (click)="save()">Save</button>
+          } @else {
+            <button class="secondary" type="button" (click)="backToOpen()">Open list</button>
+          }
+        }
+      </header>
+      <div class="panel-body">
+        @if (listError()) {
+          <p class="error">{{ listError() }}</p>
+        }
+        @if (listNotice()) {
+          <p class="note">{{ listNotice() }}</p>
+        }
+        @if (detail(); as list) {
+          @if (list.status === 'saved') {
+            <p class="muted">Saved by {{ list.saved_by_name || 'a member' }}. These prices stay as they were.</p>
+          }
+          <div class="meta-row">
+            @if (list.status === 'open' && list.invite_code) {
+              <p class="invite">
+                <span>{{ list.invite_code }}</span>
+                <button class="text" type="button" (click)="copy(list.invite_code)">Copy</button>
+              </p>
+            }
+            @for (member of list.members; track member.id) {
+              <span class="role">{{ member.display_name }} · {{ member.role }}</span>
+            }
+          </div>
+          @if (!list.items.length) {
+            <p class="empty">Nothing on this list yet. Add a product from the section beside this one.</p>
+          } @else {
+            <div class="basket-lines">
+              @for (item of list.items; track item.id) {
+                <div class="basket-line">
+                  @if (item.image_url) {
+                    <img class="thumb" [src]="item.image_url" [alt]="item.product_name" />
+                  } @else {
+                    <span class="thumb"></span>
+                  }
+                  <span class="name">
+                    <strong>{{ item.product_name }}</strong>
+                    <span class="muted">{{ item.chain_name }}@if (lineUnit(item)) { · {{ lineUnit(item) }} }</span>
+                  </span>
+                  <span class="line-actions">
+                    <span class="price">{{ euro(linePrice(item)) }}</span>
+                    @if (list.status === 'open') {
+                      <label class="qty">
+                        <input aria-label="Quantity" type="number" min="0.001" step="1" [value]="item.quantity" (change)="changeQuantity(item.id, $any($event.target).value)" />
+                      </label>
+                      <button class="text" type="button" (click)="remove(item.id)">Remove</button>
+                    } @else {
+                      <span class="muted">Qty {{ amount(item.quantity) }}</span>
+                    }
+                  </span>
+                </div>
+              }
+            </div>
+            <p class="total-line"><span>Total</span> <strong class="price">{{ euro(listTotal()) }}</strong></p>
+          }
+        } @else {
+          <p class="empty">No open list yet. Create one in the Open lists section.</p>
+        }
+      </div>
+    </section>
+  </div>
+
+  <div class="dash-lower">
+    <section class="panel" id="open-lists">
+      <header class="panel-head">
+        <div>
+          <h2>Open lists</h2>
+          <p class="muted">Create a list, join with a code, or switch the one you are shopping.</p>
+        </div>
+      </header>
+      <div class="panel-body">
+        @if (listsError()) {
+          <p class="error">{{ listsError() }}</p>
+        }
+        <div class="list-tools">
+          <form [formGroup]="listForm" (ngSubmit)="create()">
+            <label>
+              New list
+              <input type="text" formControlName="title" placeholder="Weekly shop" />
+            </label>
+            <button class="primary" type="submit">Create</button>
+          </form>
+          <form [formGroup]="listForm" (ngSubmit)="join()">
+            <label>
+              Join with a code
+              <input type="text" formControlName="invite_code" autocomplete="off" placeholder="Invite code" />
+            </label>
+            <button class="secondary" type="submit">Join</button>
+          </form>
+        </div>
+        @if (allLists() === null) {
+          <p class="muted">Loading lists.</p>
+        } @else if (!openLists().length) {
+          <p class="empty">No open lists yet.</p>
+        } @else {
+          <div class="list-grid">
+            @for (list of openLists(); track list.id) {
+              <article class="list-card" [class.current]="list.id === activeId()">
+                <div class="list-card-top">
+                  <h2>{{ list.title }}</h2>
+                  <span class="role">{{ list.id === activeId() ? 'Shopping now' : list.role }}</span>
+                </div>
+                <p class="muted">{{ list.item_count || 0 }} products · {{ list.member_count || 0 }} people</p>
+                <p class="invite">
+                  <span>{{ list.invite_code }}</span>
+                  <button class="text" type="button" (click)="copy(list.invite_code)">Copy</button>
+                </p>
+                @if (list.id !== activeId()) {
+                  <button class="primary" type="button" (click)="useOpen(list.id)">Shop with this</button>
+                }
+              </article>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="panel" id="history">
+      <header class="panel-head">
+        <div>
+          <h2>History</h2>
+          <p class="muted">Saved lists keep the prices from the moment they were saved.</p>
+        </div>
+      </header>
+      <div class="panel-body">
+        @if (allLists() === null) {
+          <p class="muted">Loading history.</p>
+        } @else if (!savedLists().length) {
+          <p class="empty">No saved lists yet. Saving the open list keeps it here.</p>
+        } @else {
+          <div class="list-grid">
+            @for (list of savedLists(); track list.id) {
+              <article class="list-card">
+                <h2>{{ list.title }}</h2>
+                <p class="muted">Saved by {{ list.saved_by_name || 'a member' }}</p>
+                <p class="muted">{{ when(list.saved_at) }} · {{ list.item_count || 0 }} products</p>
+                <button class="secondary" type="button" (click)="viewSaved(list.id)">View in the list</button>
+              </article>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+</div>

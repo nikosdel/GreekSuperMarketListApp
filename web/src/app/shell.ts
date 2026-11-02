@@ -25,7 +25,7 @@ export class Shell {
   readonly bellOpen = signal(false);
   readonly notices = signal<Notice[]>([]);
   readonly unread = signal(0);
-  readonly section = signal('Catalog');
+  readonly section = signal('Dashboard');
   readonly when = when;
 
   constructor() {
@@ -85,23 +85,21 @@ export class Shell {
     }
   }
 
-  cartLink(): string[] {
-    const id = this.activeId();
-    return id ? ['/lists', String(id)] : ['/lists'];
-  }
-
   async logout(): Promise<void> {
     await this.session.logout();
     await this.router.navigateByUrl('/login');
   }
 
   private followRoute(url: string): void {
-    if (url.startsWith('/history')) {
+    const path = url.split('?')[0].split('#')[0];
+    if (path.startsWith('/history')) {
       this.section.set('History');
-    } else if (url.startsWith('/lists')) {
+    } else if (path.startsWith('/lists')) {
       this.section.set('Lists');
-    } else {
+    } else if (path.startsWith('/catalog')) {
       this.section.set('Catalog');
+    } else {
+      this.section.set('Dashboard');
     }
   }
 }

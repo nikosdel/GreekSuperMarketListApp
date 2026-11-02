@@ -9,6 +9,10 @@
     </a>
     <nav>
       <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }" (click)="menuOpen.set(false)">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v6H4zM4 14h7v6H4zM13 14h7v6h-7z" /></svg>
+        Dashboard
+      </a>
+      <a routerLink="/catalog" routerLinkActive="active" (click)="menuOpen.set(false)">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" /></svg>
         Catalog
       </a>
@@ -40,7 +44,7 @@
           </select>
         </label>
       }
-      <a class="icon-button" [routerLink]="cartLink()" aria-label="Current list">
+      <a class="icon-button" routerLink="/" fragment="shopping-list" aria-label="Current list" (click)="menuOpen.set(false)">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M6 6h15l-1.6 8.2a1 1 0 0 1-1 .8H9.2a1 1 0 0 1-1-.8L6 6Z" />
           <path d="M6 6 5 3.5H3" />
