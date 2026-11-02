@@ -67,7 +67,35 @@ export class CatalogPage {
 
   parentLabel(): string {
     const crumbs = this.crumbs();
-    return crumbs.length <= 1 ? 'All categories' : crumbs[crumbs.length - 2];
+    return crumbs.length <= 1 ? 'Categories' : crumbs[crumbs.length - 2];
+  }
+
+  browsing(): boolean {
+    const value = this.form.getRawValue();
+    return !this.path() && !value.q.trim() && !value.chain;
+  }
+
+  heading(): string {
+    if (this.path()) {
+      return this.crumbs().at(-1) || 'Categories';
+    }
+    const value = this.form.getRawValue();
+    if (value.q.trim() || value.chain) {
+      return 'Results';
+    }
+    return 'Categories';
+  }
+
+  shelfQuery(name: string): { path: string } {
+    return { path: this.path() ? `${this.path()} > ${name}` : name };
+  }
+
+  parentQuery(): { path?: string } {
+    const crumbs = this.crumbs();
+    if (crumbs.length <= 1) {
+      return {};
+    }
+    return { path: crumbs.slice(0, -1).join(' > ') };
   }
 
   picture(name: string): string {

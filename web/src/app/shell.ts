@@ -85,19 +85,27 @@ export class Shell {
     }
   }
 
+  cartLink(): string[] {
+    const id = this.activeId();
+    return id ? ['/lists', String(id)] : ['/lists'];
+  }
+
   async logout(): Promise<void> {
     await this.session.logout();
     await this.router.navigateByUrl('/login');
   }
 
   private followRoute(url: string): void {
-    const path = url.split('?')[0].split('#')[0];
+    const bare = url.split('#')[0];
+    const path = bare.split('?')[0];
+    const query = bare.includes('?') ? bare.slice(bare.indexOf('?') + 1) : '';
     if (path.startsWith('/history')) {
       this.section.set('History');
     } else if (path.startsWith('/lists')) {
       this.section.set('Lists');
     } else if (path.startsWith('/catalog')) {
-      this.section.set('Catalog');
+      const shelf = new URLSearchParams(query).get('path')?.split(' > ').at(-1);
+      this.section.set(shelf || 'Categories');
     } else {
       this.section.set('Dashboard');
     }

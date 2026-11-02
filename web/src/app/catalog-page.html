@@ -1,37 +1,43 @@
 @if (path()) {
-  <button class="back-button" type="button" (click)="back()">
+  <a class="back-button" routerLink="/catalog" [queryParams]="parentQuery()">
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M14.5 6 8.5 12l6 6" />
     </svg>
     Back to {{ parentLabel() }}
-  </button>
+  </a>
 }
-<h1>{{ crumbs().length ? crumbs().slice(-1)[0] : 'Catalog' }}</h1>
-<p class="lead">
-  @if (path()) {
-    Search, shop, and sort stay inside {{ path() }}.
-  } @else {
-    Open a category. Each card is a shelf you can shop.
-  }
-</p>
+<header class="page-head">
+  <h1>{{ heading() }}</h1>
+  <p class="lead">
+    @if (path()) {
+      Products in {{ path() }}. Narrow the shelf, or add one to your list.
+    } @else if (form.controls.q.value.trim() || form.controls.chain.value) {
+      Matches from every shelf.
+    } @else {
+      Choose a shelf. It opens on its own page, with its products.
+    }
+  </p>
+</header>
 
 <div class="shop-bar">
   @if (activeList(); as list) {
     <p>Adding products to <strong>{{ list.title }}</strong></p>
     <a [routerLink]="['/lists', list.id]">Open this list</a>
   } @else {
-    <p>Create a list, then add products from here.</p>
+    <p>Create a list, then add products from a shelf.</p>
     <a routerLink="/lists">Go to lists</a>
   }
 </div>
 
-<p class="crumbs">
-  <button type="button" class="text" (click)="show({ path: '', offset: 0 })">All categories</button>
-  @for (crumb of crumbs(); track crumb; let index = $index) {
-    <span aria-hidden="true">/</span>
-    <button type="button" class="text" (click)="show({ path: crumbPath(index), offset: 0 })">{{ crumb }}</button>
-  }
-</p>
+@if (path()) {
+  <p class="crumbs">
+    <a routerLink="/catalog">Categories</a>
+    @for (crumb of crumbs(); track crumb; let index = $index) {
+      <span aria-hidden="true">/</span>
+      <a routerLink="/catalog" [queryParams]="{ path: crumbPath(index) }">{{ crumb }}</a>
+    }
+  </p>
+}
 
 @if (error()) {
   <p class="error">{{ error() }}</p>
@@ -40,23 +46,34 @@
   <p class="note">{{ notice() }}</p>
 }
 
-@if (categories().length) {
+@if (browsing() && categories().length) {
   <div class="choices">
     @for (category of categories(); track category.name) {
-      <button type="button" class="choice" (click)="choose(category.name)">
+      <a class="choice" routerLink="/catalog" [queryParams]="shelfQuery(category.name)">
         <img [src]="picture(category.name)" alt="" />
         <span class="choice-copy">
           <strong>{{ category.name }}</strong>
           <span class="muted">{{ category.products }} products</span>
         </span>
-      </button>
+      </a>
+    }
+  </div>
+}
+
+@if (path() && categories().length) {
+  <div class="chips">
+    @for (category of categories(); track category.name) {
+      <a class="chip" routerLink="/catalog" [queryParams]="shelfQuery(category.name)">
+        {{ category.name }}
+        <span>{{ category.products }}</span>
+      </a>
     }
   </div>
 }
 
 <form class="filters" [formGroup]="form" (ngSubmit)="applyFilters()">
   <label>
-    @if (path()) { Search in this category } @else { Search }
+    @if (path()) { Search in this shelf } @else { Search }
     <input type="search" formControlName="q" placeholder="Name or size" />
   </label>
   <label>
@@ -82,39 +99,31 @@
   <p class="muted">Loading products.</p>
 } @else if (products(); as rows) {
   @if (!rows.length) {
-    <p class="sheet empty">No products match these filters.</p>
+    <p class="empty">No products match these filters.</p>
   } @else {
-  <p class="muted result-count">{{ total() }} products</p>
-  <div class="price-sheet">
-    <div class="price-head">
-      <span></span>
-      <span>Product</span>
-      <span>Shop</span>
-      <span class="num">Unit</span>
-      <span class="num">Price</span>
-      <span></span>
+    <p class="muted result-count">{{ total() }} products</p>
+    <div class="goods">
+      @for (product of rows; track product.id) {
+        <article class="good">
+          @if (product.image_url) {
+            <img class="good-photo" [src]="product.image_url" [alt]="product.name" />
+          } @else {
+            <span class="good-photo"></span>
+          }
+          <span class="good-copy">
+            <strong>{{ product.name }}</strong>
+            <span class="muted">{{ detail(product) }}</span>
+          </span>
+          <span class="good-buy">
+            <span class="price">{{ euro(product.price) }}</span>
+            <button class="add" type="button" (click)="add(product)">Add</button>
+          </span>
+        </article>
+      }
     </div>
-    @for (product of rows; track product.id) {
-      <div class="price-row">
-        @if (product.image_url) {
-          <img class="thumb" [src]="product.image_url" [alt]="product.name" />
-        } @else {
-          <span class="thumb"></span>
-        }
-        <span class="name">
-          <strong>{{ product.name }}</strong>
-          <span class="muted phone-meta">{{ detail(product) }}</span>
-        </span>
-        <span class="shop desk">{{ product.chain_name }}</span>
-        <span class="unit desk">{{ product.unit_price_text || '—' }}</span>
-        <span class="price">{{ euro(product.price) }}</span>
-        <button class="primary" type="button" (click)="add(product)">Add</button>
-      </div>
-    }
-  </div>
-  <div class="pager">
-    <button class="secondary" type="button" [disabled]="form.controls.offset.value <= 0" (click)="page(form.controls.offset.value - limit)">Previous</button>
-    <button class="secondary" type="button" [disabled]="form.controls.offset.value + limit >= total()" (click)="page(form.controls.offset.value + limit)">Next</button>
-  </div>
+    <div class="pager">
+      <button class="secondary" type="button" [disabled]="form.controls.offset.value <= 0" (click)="page(form.controls.offset.value - limit)">Previous</button>
+      <button class="secondary" type="button" [disabled]="form.controls.offset.value + limit >= total()" (click)="page(form.controls.offset.value + limit)">Next</button>
+    </div>
   }
 }

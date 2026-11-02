@@ -795,6 +795,137 @@ input, select {
 
 .dashboard .choice img { height: 96px; }
 
+a.choice,
+a.list-card,
+a.chip,
+a.back-button {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.primary,
+a.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.panel-head a {
+  color: var(--green);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.crumbs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.crumbs a:hover,
+.chip:hover,
+a.choice:hover { color: var(--ink); }
+
+.home-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.more { margin-top: 10px; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.chip span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.goods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.good {
+  display: grid;
+  grid-template-rows: 148px auto auto;
+  gap: 10px;
+  align-content: start;
+  padding: 12px;
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.good-photo {
+  width: 100%;
+  height: 148px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.good-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.good-copy strong {
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.7em;
+}
+
+.good-buy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.add {
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+}
+
+.add:disabled { opacity: 0.5; }
+
+.basket-line:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .dash-work {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
@@ -857,6 +988,7 @@ input, select {
 .line-actions .qty input { width: 72px; height: 36px; }
 
 @media (max-width: 1080px) {
+  .home-top,
   .dash-work,
   .dash-lower { grid-template-columns: 1fr; }
 
