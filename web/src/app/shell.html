@@ -1,6 +1,6 @@
 <div class="app">
   <button type="button" class="scrim" [class.open]="menuOpen()" aria-label="Close menu" (click)="menuOpen.set(false)"></button>
-  <aside class="sidebar" [class.open]="menuOpen()">
+  <aside class="sidebar bg-ground text-ink" [class.open]="menuOpen()">
     <a class="mark" routerLink="/" (click)="menuOpen.set(false)">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M6 5.5h12M6 5.5v14M6 10h12M6 14.5h8" />
@@ -31,7 +31,7 @@
     </div>
   </aside>
   <div class="workspace">
-    <header class="topbar">
+    <header class="topbar bg-green">
       <button class="text menu-button" type="button" (click)="toggleMenu()">Menu</button>
       <p class="section">{{ section() }}</p>
       <div class="tools">
