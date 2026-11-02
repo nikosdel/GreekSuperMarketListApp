@@ -36,6 +36,7 @@ export interface CatalogProduct {
   id: number;
   name: string;
   category_path: string | null;
+  image_url: string | null;
   chain_name: string;
   price: number | null;
   unit_price_text: string | null;

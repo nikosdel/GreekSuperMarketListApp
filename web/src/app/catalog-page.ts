@@ -75,12 +75,6 @@ export class CatalogPage {
     return categoryPicture(this.path(), name);
   }
 
-  productPicture(product: CatalogProduct): string {
-    const parts = (product.category_path || '').split(' > ').filter(Boolean);
-    const name = parts.pop() || product.name;
-    return categoryPicture(parts.join(' > '), name);
-  }
-
   async back(): Promise<void> {
     const crumbs = this.crumbs();
     const path = crumbs.length <= 1 ? '' : crumbs.slice(0, -1).join(' > ');

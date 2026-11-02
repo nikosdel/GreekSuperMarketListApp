@@ -78,7 +78,9 @@
   <ul class="sheet">
     @for (product of rows; track product.id) {
       <li class="row">
-        <img class="thumb" [src]="productPicture(product)" alt="" />
+        @if (product.image_url) {
+          <img class="thumb" [src]="product.image_url" [alt]="product.name" />
+        }
         <span>
           <strong>{{ product.name }}</strong>
           <span class="muted">{{ detail(product) }}</span>

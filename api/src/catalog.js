@@ -94,7 +94,7 @@ async function listProducts(req, res) {
     ? "product.name ASC, current_price.price ASC"
     : "current_price.price ASC, product.name ASC";
   const found = await pool.query(
-    `SELECT product.id, product.name, product.category_path, chain.name AS chain_name,
+    `SELECT product.id, product.name, product.category_path, product.image_url, chain.name AS chain_name,
             current_price.price, current_price.unit_price_text, current_price.observed_at,
             count(*) OVER()::int AS total
      FROM product
@@ -137,7 +137,7 @@ async function searchCatalog(req, res) {
   });
   const params = tokens.map((token) => `%${token.replace(/[%_\\]/g, "")}%`);
   const found = await pool.query(
-    `SELECT product.id, product.name, product.category_path, chain.name AS chain_name,
+    `SELECT product.id, product.name, product.category_path, product.image_url, chain.name AS chain_name,
             current_price.price, current_price.unit_price_text, current_price.observed_at
      FROM product
      JOIN chain ON chain.id = product.chain_id
@@ -157,6 +157,7 @@ function publicProduct(row) {
     id: Number(row.id),
     name: row.name,
     category_path: row.category_path,
+    image_url: row.image_url || null,
     chain_name: row.chain_name,
     price: row.price === null ? null : Number(row.price),
     unit_price_text: row.unit_price_text,
