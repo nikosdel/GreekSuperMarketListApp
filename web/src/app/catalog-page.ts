@@ -3,9 +3,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Api } from './api';
+import { Basket } from './basket';
 import { categoryPicture } from './category-pictures';
 import { euro } from './money';
-import { CatalogProduct, ShoppingList } from './models';
+import { CatalogProduct } from './models';
 
 interface CategoryChoice {
   name: string;
@@ -22,12 +23,12 @@ export class CatalogPage {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private forms = inject(FormBuilder);
+  private basket = inject(Basket);
   readonly path = signal('');
   readonly categories = signal<CategoryChoice[]>([]);
   readonly products = signal<CatalogProduct[] | null>(null);
   readonly total = signal(0);
   readonly chains = signal<string[]>([]);
-  readonly lists = signal<ShoppingList[]>([]);
   readonly error = signal('');
   readonly notice = signal('');
   readonly loading = signal(true);
@@ -42,9 +43,7 @@ export class CatalogPage {
 
   constructor() {
     void this.api.get<{ chains: string[] }>('/catalog/chains').then((body) => this.chains.set(body.chains));
-    void this.api.get<{ lists: ShoppingList[] }>('/lists').then((body) => {
-      this.lists.set(body.lists.filter((list) => list.status === 'open'));
-    });
+    void this.basket.load().catch(() => undefined);
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const path = params.get('path') || '';
       this.path.set(path);
@@ -73,6 +72,10 @@ export class CatalogPage {
 
   picture(name: string): string {
     return categoryPicture(this.path(), name);
+  }
+
+  activeList() {
+    return this.basket.active();
   }
 
   async back(): Promise<void> {
@@ -119,14 +122,16 @@ export class CatalogPage {
     await this.show({ offset: Math.max(0, next) });
   }
 
-  async add(product: CatalogProduct, listId: string): Promise<void> {
-    if (!listId) {
+  async add(product: CatalogProduct): Promise<void> {
+    const list = this.basket.active();
+    if (!list) {
+      await this.router.navigateByUrl('/lists');
       return;
     }
     this.error.set('');
     try {
-      await this.api.post(`/lists/${listId}/items`, { product_id: product.id, quantity: 1 });
-      this.notice.set(`Added ${product.name}.`);
+      await this.api.post(`/lists/${list.id}/items`, { product_id: product.id, quantity: 1 });
+      this.notice.set(`Added ${product.name} to ${list.title}.`);
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : 'The product was not added.');
     }

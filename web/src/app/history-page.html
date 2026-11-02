@@ -1,5 +1,9 @@
-<h1>History</h1>
-<p class="lead">Saved lists keep the prices from the moment they were saved. They stay locked.</p>
+<header class="page-head">
+  <div>
+    <h1>History</h1>
+    <p class="lead">Saved lists keep the prices from the moment they were saved. They stay locked.</p>
+  </div>
+</header>
 
 @if (error()) {
   <p class="error">{{ error() }}</p>
@@ -10,17 +14,14 @@
 } @else if (saved().length === 0) {
   <p class="sheet empty">No saved lists yet. Saving a list keeps it here.</p>
 } @else {
-  <ul class="sheet">
+  <div class="list-grid">
     @for (list of saved(); track list.id) {
-      <li>
-        <a class="row" [routerLink]="['/lists', list.id]">
-          <span>
-            <strong>{{ list.title }}</strong>
-            <span class="muted">Saved by {{ list.saved_by_name || 'a member' }}</span>
-          </span>
-          <span class="muted">{{ when(list.saved_at) }}</span>
-        </a>
-      </li>
+      <article class="list-card">
+        <h2>{{ list.title }}</h2>
+        <p class="muted">Saved by {{ list.saved_by_name || 'a member' }}</p>
+        <p class="muted">{{ when(list.saved_at) }} · {{ list.item_count || 0 }} products</p>
+        <a class="primary" [routerLink]="['/lists', list.id]">Open list</a>
+      </article>
     }
-  </ul>
+  </div>
 }

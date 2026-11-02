@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Api } from './api';
+import { Basket } from './basket';
 import { amount, euro, when } from './money';
 import { CatalogProduct, ListDetail } from './models';
 
@@ -14,6 +15,7 @@ export class ListPage {
   private api = inject(Api);
   private route = inject(ActivatedRoute);
   private forms = inject(FormBuilder);
+  private basket = inject(Basket);
   readonly list = signal<ListDetail | null>(null);
   readonly results = signal<CatalogProduct[]>([]);
   readonly error = signal('');
@@ -41,6 +43,24 @@ export class ListPage {
     return list.status === 'saved' ? item.price_at_save : item.current_price;
   }
 
+  listTotal(): number | null {
+    const list = this.list();
+    if (!list) {
+      return null;
+    }
+    let sum = 0;
+    let priced = false;
+    for (const item of list.items) {
+      const price = this.linePrice(item);
+      if (price === null) {
+        continue;
+      }
+      priced = true;
+      sum += price * Number(item.quantity);
+    }
+    return priced ? sum : null;
+  }
+
   lineUnit(item: ListDetail['items'][number]): string | null {
     const list = this.list();
     if (!list) {
@@ -58,7 +78,12 @@ export class ListPage {
     }
     this.error.set('');
     try {
-      this.list.set(await this.api.get<ListDetail>(`/lists/${id}`));
+      const detail = await this.api.get<ListDetail>(`/lists/${id}`);
+      this.list.set(detail);
+      if (detail.status === 'open') {
+        this.basket.choose(detail.id);
+        await this.basket.load().catch(() => undefined);
+      }
     } catch (error) {
       this.list.set(null);
       this.error.set(error instanceof Error ? error.message : 'That list is not available.');

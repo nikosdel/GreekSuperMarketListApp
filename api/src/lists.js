@@ -37,7 +37,9 @@ async function createList(req, res) {
 async function myLists(req, res) {
   const rows = await pool.query(
     `SELECT list.id, list.title, list.status, list.invite_code, list.created_at, list.saved_at,
-            member.role, saver.display_name AS saved_by_name
+            member.role, saver.display_name AS saved_by_name,
+            (SELECT count(*)::int FROM shopping_list_item item WHERE item.list_id = list.id) AS item_count,
+            (SELECT count(*)::int FROM shopping_list_member person WHERE person.list_id = list.id) AS member_count
      FROM shopping_list list
      JOIN shopping_list_member member ON member.list_id = list.id
      LEFT JOIN app_user saver ON saver.id = list.saved_by
@@ -107,8 +109,10 @@ async function listDetail(req, res) {
   const items = await pool.query(
     `SELECT item.id, item.product_id, item.quantity, item.product_name, item.chain_name,
             item.price_at_save, item.unit_price_at_save, item.added_by,
-            current_price.price AS current_price, current_price.unit_price_text
+            current_price.price AS current_price, current_price.unit_price_text,
+            product.image_url
      FROM shopping_list_item item
+     LEFT JOIN product ON product.id = item.product_id
      LEFT JOIN current_price ON current_price.product_id = item.product_id
      WHERE item.list_id = $1
      ORDER BY item.id`,
@@ -327,6 +331,8 @@ function publicList(row) {
     created_at: row.created_at,
     saved_at: row.saved_at,
     saved_by_name: row.saved_by_name || null,
+    item_count: row.item_count === undefined ? undefined : Number(row.item_count),
+    member_count: row.member_count === undefined ? undefined : Number(row.member_count),
   };
 }
 
@@ -341,6 +347,7 @@ function publicItem(row) {
     unit_price_at_save: row.unit_price_at_save === null || row.unit_price_at_save === undefined ? null : Number(row.unit_price_at_save),
     current_price: row.current_price === null || row.current_price === undefined ? null : Number(row.current_price),
     unit_price_text: row.unit_price_text || null,
+    image_url: row.image_url || null,
     added_by: row.added_by === null ? null : Number(row.added_by),
   };
 }

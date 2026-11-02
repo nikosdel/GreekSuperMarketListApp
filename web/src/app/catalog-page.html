@@ -15,6 +15,16 @@
   }
 </p>
 
+<div class="shop-bar">
+  @if (activeList(); as list) {
+    <p>Adding products to <strong>{{ list.title }}</strong></p>
+    <a [routerLink]="['/lists', list.id]">Open this list</a>
+  } @else {
+    <p>Create a list, then add products from here.</p>
+    <a routerLink="/lists">Go to lists</a>
+  }
+</div>
+
 <p class="crumbs">
   <button type="button" class="text" (click)="show({ path: '', offset: 0 })">All categories</button>
   @for (crumb of crumbs(); track crumb; let index = $index) {
@@ -75,30 +85,33 @@
     <p class="sheet empty">No products match these filters.</p>
   } @else {
   <p class="muted result-count">{{ total() }} products</p>
-  <ul class="sheet">
+  <div class="price-sheet">
+    <div class="price-head">
+      <span></span>
+      <span>Product</span>
+      <span>Shop</span>
+      <span class="num">Unit</span>
+      <span class="num">Price</span>
+      <span></span>
+    </div>
     @for (product of rows; track product.id) {
-      <li class="row">
+      <div class="price-row">
         @if (product.image_url) {
           <img class="thumb" [src]="product.image_url" [alt]="product.name" />
-        }
-        <span>
-          <strong>{{ product.name }}</strong>
-          <span class="muted">{{ detail(product) }}</span>
-        </span>
-        <span class="price">{{ euro(product.price) }}</span>
-        @if (lists().length) {
-          <select aria-label="Add to a list" (change)="add(product, $any($event.target).value); $any($event.target).value = ''">
-            <option value="">Add to list</option>
-            @for (list of lists(); track list.id) {
-              <option [value]="list.id">{{ list.title }}</option>
-            }
-          </select>
         } @else {
-          <a routerLink="/lists">Create a list</a>
+          <span class="thumb"></span>
         }
-      </li>
+        <span class="name">
+          <strong>{{ product.name }}</strong>
+          <span class="muted phone-meta">{{ detail(product) }}</span>
+        </span>
+        <span class="shop desk">{{ product.chain_name }}</span>
+        <span class="unit desk">{{ product.unit_price_text || '—' }}</span>
+        <span class="price">{{ euro(product.price) }}</span>
+        <button class="primary" type="button" (click)="add(product)">Add</button>
+      </div>
     }
-  </ul>
+  </div>
   <div class="pager">
     <button class="secondary" type="button" [disabled]="form.controls.offset.value <= 0" (click)="page(form.controls.offset.value - limit)">Previous</button>
     <button class="secondary" type="button" [disabled]="form.controls.offset.value + limit >= total()" (click)="page(form.controls.offset.value + limit)">Next</button>

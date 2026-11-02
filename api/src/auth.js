@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import rateLimit from "express-rate-limit";
 import { pool } from "./db.js";
 import { asyncRoute, HttpError } from "./errors.js";
+import { sendAccountCreated } from "./mail.js";
 import { issueRefreshToken, readAccessToken, revokeRefreshToken, rotateRefreshToken, tokenResponse } from "./tokens.js";
 
 const DUMMY_HASH = bcrypt.hashSync("invalid-password-placeholder", 12);
@@ -59,7 +60,13 @@ export function registerRoutes(app) {
            RETURNING id, email, display_name, created_at`,
           [email, displayName, passwordHash],
         );
-        res.status(201).json(publicUser(inserted.rows[0]));
+        let emailSent = false;
+        try {
+          emailSent = await sendAccountCreated({ email, displayName });
+        } catch {
+          console.error("welcome email failed");
+        }
+        res.status(201).json({ ...publicUser(inserted.rows[0]), email_sent: emailSent });
       } catch (error) {
         if (error.code === "23505") {
           throw new HttpError(409, "email_taken", "That email is already registered.");

@@ -1,43 +1,53 @@
-<h1>Open lists</h1>
-<p class="lead">A list stays editable by everyone on it until someone saves it.</p>
+<header class="page-head">
+  <div>
+    <h1>Lists</h1>
+    <p class="lead">An open list stays shared. Everyone on it can add, change, and remove products until someone saves it.</p>
+  </div>
+</header>
 
 @if (error()) {
   <p class="error">{{ error() }}</p>
 }
+@if (copied()) {
+  <p class="note">Invite code copied.</p>
+}
 
-<div class="board">
-  <form class="split" [formGroup]="form" (ngSubmit)="create()">
+<section class="list-tools">
+  <form [formGroup]="form" (ngSubmit)="create()">
     <label>
       New list
       <input type="text" formControlName="title" placeholder="Weekly shop" />
     </label>
-    <button class="primary" type="submit">Create list</button>
+    <button class="primary" type="submit">Create</button>
   </form>
-  <form class="split" [formGroup]="form" (ngSubmit)="join()">
+  <form [formGroup]="form" (ngSubmit)="join()">
     <label>
-      Invite code
-      <input type="text" formControlName="invite_code" autocomplete="off" />
+      Join with a code
+      <input type="text" formControlName="invite_code" autocomplete="off" placeholder="Invite code" />
     </label>
-    <button class="secondary" type="submit">Join list</button>
+    <button class="secondary" type="submit">Join</button>
   </form>
-</div>
+</section>
 
 @if (lists() === null) {
   <p class="muted">Loading lists.</p>
 } @else if (openLists().length === 0) {
-  <p class="sheet empty">No open lists yet. Create one, or join with a code.</p>
+  <p class="sheet empty">No open lists yet. Create one above, or join with a code from someone else.</p>
 } @else {
-  <ul class="sheet">
+  <div class="list-grid">
     @for (list of openLists(); track list.id) {
-      <li>
-        <a class="row" [routerLink]="['/lists', list.id]">
-          <span>
-            <strong>{{ list.title }}</strong>
-            <span class="muted">{{ list.role }}</span>
-          </span>
-          <span class="muted">{{ list.invite_code }}</span>
-        </a>
-      </li>
+      <article class="list-card">
+        <div class="list-card-top">
+          <h2>{{ list.title }}</h2>
+          <span class="role">{{ list.role }}</span>
+        </div>
+        <p class="muted">{{ list.item_count || 0 }} products · {{ list.member_count || 0 }} people</p>
+        <p class="invite">
+          <span>{{ list.invite_code }}</span>
+          <button class="text" type="button" (click)="copy(list.invite_code || '')">Copy</button>
+        </p>
+        <a class="primary" [routerLink]="['/lists', list.id]">Open list</a>
+      </article>
     }
-  </ul>
+  </div>
 }

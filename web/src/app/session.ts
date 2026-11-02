@@ -37,7 +37,7 @@ export class Session {
     return this.useRefresh(refresh);
   }
 
-  async register(email: string, displayName: string, password: string): Promise<void> {
+  async register(email: string, displayName: string, password: string): Promise<{ email_sent: boolean }> {
     const created = await request('/users', {
       method: 'POST',
       body: JSON.stringify({ email, display_name: displayName, password }),
@@ -45,7 +45,9 @@ export class Session {
     if (!created.ok) {
       throw new Error(await problem(created));
     }
+    const body = await created.json() as { email_sent?: boolean };
     await this.login(email, password);
+    return { email_sent: Boolean(body.email_sent) };
   }
 
   async login(email: string, password: string): Promise<void> {

@@ -2,6 +2,7 @@ import { Component, DestroyRef, ElementRef, HostListener, inject, signal, viewCh
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { Api } from './api';
+import { Basket } from './basket';
 import { when } from './money';
 import { Notice } from './models';
 import { Session } from './session';
@@ -16,7 +17,10 @@ export class Shell {
   private router = inject(Router);
   private api = inject(Api);
   private bellRoot = viewChild<ElementRef<HTMLElement>>('bellRoot');
+  private basket = inject(Basket);
   readonly account = this.session.account;
+  readonly openLists = this.basket.lists;
+  readonly activeId = this.basket.activeId;
   readonly menuOpen = signal(false);
   readonly bellOpen = signal(false);
   readonly notices = signal<Notice[]>([]);
@@ -30,6 +34,7 @@ export class Shell {
       this.followRoute(event.urlAfterRedirects);
       this.menuOpen.set(false);
     });
+    void this.basket.load().catch(() => undefined);
     void this.loadNotices();
     const timer = setInterval(() => void this.loadNotices(), 30000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
@@ -71,6 +76,18 @@ export class Shell {
       this.notices.update((rows) => rows.map((row) => row.id === notice.id ? { ...row, read_at: new Date().toISOString() } : row));
     }
     await this.router.navigate(['/lists', notice.list_id]);
+  }
+
+  chooseList(raw: string): void {
+    const id = Number(raw);
+    if (Number.isSafeInteger(id) && id > 0) {
+      this.basket.choose(id);
+    }
+  }
+
+  cartLink(): string[] {
+    const id = this.activeId();
+    return id ? ['/lists', String(id)] : ['/lists'];
   }
 
   async logout(): Promise<void> {

@@ -14,7 +14,7 @@
     </div>
   <section class="auth">
     <h1>Register</h1>
-    <p class="lead">Start a list and invite someone onto it. The password needs at least 10 characters.</p>
+    <p class="lead">Creating an account sends a confirmation to this email. The password needs at least 10 characters.</p>
     <form [formGroup]="form" (ngSubmit)="submit()">
       <label>
         Name
@@ -30,6 +30,9 @@
       </label>
       @if (error()) {
         <p class="error">{{ error() }}</p>
+      }
+      @if (note()) {
+        <p class="note">{{ note() }} <a routerLink="/">Continue</a></p>
       }
       <button class="primary" type="submit" [disabled]="busy()">Create account</button>
     </form>

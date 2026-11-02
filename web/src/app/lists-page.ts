@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Api } from './api';
+import { Basket } from './basket';
 import { ShoppingList } from './models';
 
 @Component({
@@ -13,8 +14,10 @@ export class ListsPage {
   private api = inject(Api);
   private router = inject(Router);
   private forms = inject(FormBuilder);
+  private basket = inject(Basket);
   readonly lists = signal<ShoppingList[] | null>(null);
   readonly error = signal('');
+  readonly copied = signal(false);
   readonly form = this.forms.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(120)]],
     invite_code: [''],
@@ -33,6 +36,7 @@ export class ListsPage {
     try {
       const body = await this.api.get<{ lists: ShoppingList[] }>('/lists');
       this.lists.set(body.lists);
+      await this.basket.load();
     } catch (error) {
       this.lists.set([]);
       this.error.set(error instanceof Error ? error.message : 'The lists did not load.');
@@ -48,6 +52,8 @@ export class ListsPage {
     this.error.set('');
     try {
       const created = await this.api.post<ShoppingList>('/lists', { title });
+      this.basket.choose(created.id);
+      await this.basket.load();
       await this.router.navigate(['/lists', created.id]);
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : 'The list was not created.');
@@ -62,9 +68,19 @@ export class ListsPage {
     this.error.set('');
     try {
       const joined = await this.api.post<{ list_id: number }>('/lists/join', { invite_code: inviteCode });
+      this.basket.choose(joined.list_id);
+      await this.basket.load();
       await this.router.navigate(['/lists', joined.list_id]);
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : 'That invite code did not match an open list.');
     }
+  }
+
+  async copy(code: string): Promise<void> {
+    if (!code) {
+      return;
+    }
+    await navigator.clipboard.writeText(code);
+    this.copied.set(true);
   }
 }

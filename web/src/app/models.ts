@@ -7,6 +7,8 @@ export interface ShoppingList {
   created_at: string;
   saved_at: string | null;
   saved_by_name: string | null;
+  item_count?: number;
+  member_count?: number;
 }
 
 export interface ListItem {
@@ -19,6 +21,7 @@ export interface ListItem {
   unit_price_at_save: number | null;
   current_price: number | null;
   unit_price_text: string | null;
+  image_url: string | null;
 }
 
 export interface Member {

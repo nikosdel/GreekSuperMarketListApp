@@ -3,7 +3,7 @@
 }
 
 @if (list(); as list) {
-  <p class="back"><a routerLink="/lists">Open lists</a></p>
+  <p class="back"><a routerLink="/lists">Lists</a></p>
   <header class="title-row">
     <div>
       <h1>{{ list.title }}</h1>
@@ -22,12 +22,20 @@
     <p class="note">{{ notice() }}</p>
   }
 
+  <div class="meta-row">
+    @if (list.status === 'open' && list.invite_code) {
+      <p class="invite">
+        <span>{{ list.invite_code }}</span>
+        <button class="text" type="button" (click)="copyCode(list.invite_code || '')">Copy</button>
+      </p>
+    }
+    @for (member of list.members; track member.id) {
+      <span class="role">{{ member.display_name }} · {{ member.role }}</span>
+    }
+  </div>
+
   @if (list.status === 'open') {
-    <p class="code">
-      Invite code <strong>{{ list.invite_code }}</strong>
-      <button class="text" type="button" (click)="copyCode(list.invite_code || '')">Copy</button>
-    </p>
-    <form class="split" [formGroup]="form" (ngSubmit)="search()">
+    <form class="search-bar" [formGroup]="form" (ngSubmit)="search()">
       <label>
         Add a product
         <input type="search" formControlName="query" placeholder="γάλα 1lt" />
@@ -35,51 +43,69 @@
       <button class="secondary" type="submit" [disabled]="searching()">Search catalog</button>
     </form>
     @if (results().length) {
-      <ul class="sheet">
+      <div class="price-sheet">
         @for (product of results(); track product.id) {
-          <li class="row">
-            <span>
+          <div class="price-row">
+            @if (product.image_url) {
+              <img class="thumb" [src]="product.image_url" [alt]="product.name" />
+            } @else {
+              <span class="thumb"></span>
+            }
+            <span class="name">
               <strong>{{ product.name }}</strong>
-              <span class="muted">{{ product.chain_name }}</span>
+              <span class="muted phone-meta">{{ product.chain_name }}</span>
             </span>
+            <span class="shop desk">{{ product.chain_name }}</span>
+            <span class="unit desk">{{ product.unit_price_text || '—' }}</span>
             <span class="price">{{ euro(product.price) }}</span>
             <button class="primary" type="button" (click)="add(product)">Add</button>
-          </li>
+          </div>
         }
-      </ul>
+      </div>
     }
   }
 
   <h2>On the list</h2>
   @if (!list.items.length) {
-    <p class="sheet empty">Nothing on this list yet. Search the catalog and add a product.</p>
+    <p class="sheet empty">Nothing on this list yet. Search the catalog above, or add a product from a category.</p>
   } @else {
-    <ul class="sheet">
+    <div class="price-sheet">
+      <div class="price-head">
+        <span></span>
+        <span>Product</span>
+        <span>Shop</span>
+        <span class="num">Qty</span>
+        <span class="num">Price</span>
+        <span></span>
+      </div>
       @for (item of list.items; track item.id) {
-        <li class="row">
-          <span>
+        <div class="price-row">
+          @if (item.image_url) {
+            <img class="thumb" [src]="item.image_url" [alt]="item.product_name" />
+          } @else {
+            <span class="thumb"></span>
+          }
+          <span class="name">
             <strong>{{ item.product_name }}</strong>
-            <span class="muted">{{ item.chain_name }}@if (lineUnit(item)) { · {{ lineUnit(item) }} }</span>
+            <span class="muted phone-meta">{{ item.chain_name }}@if (lineUnit(item)) { · {{ lineUnit(item) }} }</span>
           </span>
+          <span class="shop desk">{{ item.chain_name }}@if (lineUnit(item)) { · {{ lineUnit(item) }} }</span>
           @if (list.status === 'open') {
-            <label class="qty">
-              Qty
+            <label class="qty unit">
               <input type="number" min="0.001" step="1" [value]="item.quantity" (change)="changeQuantity(item.id, $any($event.target).value)" />
             </label>
-            <button class="text" type="button" (click)="remove(item.id)">Remove</button>
           } @else {
-            <span class="muted">{{ amount(item.quantity) }}</span>
+            <span class="unit">{{ amount(item.quantity) }}</span>
           }
           <span class="price">{{ euro(linePrice(item)) }}</span>
-        </li>
+          @if (list.status === 'open') {
+            <button class="text" type="button" (click)="remove(item.id)">Remove</button>
+          } @else {
+            <span></span>
+          }
+        </div>
       }
-    </ul>
+    </div>
+    <p class="total-line"><span>Total</span> <strong class="price">{{ euro(listTotal()) }}</strong></p>
   }
-
-  <h2>People</h2>
-  <ul class="people">
-    @for (member of list.members; track member.id) {
-      <li>{{ member.display_name }} <span class="muted">{{ member.role }}</span></li>
-    }
-  </ul>
 }

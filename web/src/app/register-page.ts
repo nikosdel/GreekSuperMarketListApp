@@ -13,6 +13,7 @@ export class RegisterPage {
   private router = inject(Router);
   private forms = inject(FormBuilder);
   readonly error = signal('');
+  readonly note = signal('');
   readonly busy = signal(false);
   readonly form = this.forms.nonNullable.group({
     display_name: ['', [Validators.required, Validators.maxLength(80)]],
@@ -29,8 +30,12 @@ export class RegisterPage {
     this.error.set('');
     const value = this.form.getRawValue();
     try {
-      await this.session.register(value.email, value.display_name.trim(), value.password);
-      await this.router.navigateByUrl('/');
+      const created = await this.session.register(value.email, value.display_name.trim(), value.password);
+      if (created.email_sent) {
+        await this.router.navigateByUrl('/');
+      } else {
+        this.note.set('Your account is ready. The confirmation email was not sent because this computer has no mail server configured.');
+      }
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : 'Registration failed.');
     } finally {
