@@ -33,7 +33,16 @@
   <div class="workspace">
     <header class="topbar bg-green">
       <button class="text menu-button" type="button" (click)="toggleMenu()">Menu</button>
-      <p class="section">{{ section() }}</p>
+      <nav class="place flex min-w-0 flex-wrap items-center gap-2" aria-label="Where you are">
+        @for (place of places(); track $index; let last = $last) {
+          @if (!last) {
+            <a [routerLink]="place.commands" [queryParams]="place.query">{{ place.label }}</a>
+            <span aria-hidden="true">/</span>
+          } @else {
+            <span aria-current="page">{{ place.label }}</span>
+          }
+        }
+      </nav>
       <div class="tools">
       @if (openLists().length) {
         <label class="active-list">

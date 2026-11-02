@@ -26,6 +26,7 @@ export class Shell {
   readonly notices = signal<Notice[]>([]);
   readonly unread = signal(0);
   readonly section = signal('Dashboard');
+  readonly places = signal<Place[]>([{ label: 'Dashboard', commands: ['/'], query: {} }]);
   readonly when = when;
 
   constructor() {
@@ -98,16 +99,46 @@ export class Shell {
   private followRoute(url: string): void {
     const bare = url.split('#')[0];
     const path = bare.split('?')[0];
-    const query = bare.includes('?') ? bare.slice(bare.indexOf('?') + 1) : '';
+    const params = new URLSearchParams(bare.includes('?') ? bare.slice(bare.indexOf('?') + 1) : '');
+    const home: Place = { label: 'Dashboard', commands: ['/'], query: {} };
     if (path.startsWith('/history')) {
       this.section.set('History');
+      this.places.set([home, { label: 'History', commands: ['/history'], query: {} }]);
+    } else if (/^\/lists\/\d+/.test(path)) {
+      this.section.set('Shopping list');
+      this.places.set([
+        home,
+        { label: 'Lists', commands: ['/lists'], query: {} },
+        { label: 'Shopping list', commands: [path], query: {} },
+      ]);
     } else if (path.startsWith('/lists')) {
       this.section.set('Lists');
+      this.places.set([home, { label: 'Lists', commands: ['/lists'], query: {} }]);
     } else if (path.startsWith('/catalog')) {
-      const shelf = new URLSearchParams(query).get('path')?.split(' > ').at(-1);
-      this.section.set(shelf || 'Categories');
+      const shelf = params.get('path') || '';
+      const crumbs = shelf ? shelf.split(' > ').filter(Boolean) : [];
+      const places: Place[] = [home, { label: 'Categories', commands: ['/catalog'], query: {} }];
+      crumbs.forEach((name, index) => {
+        places.push({
+          label: name,
+          commands: ['/catalog'],
+          query: { path: crumbs.slice(0, index + 1).join(' > ') },
+        });
+      });
+      if (!crumbs.length && (params.get('q') || params.get('chain'))) {
+        places.push({ label: 'Products', commands: ['/catalog'], query: Object.fromEntries(params.entries()) });
+      }
+      this.places.set(places);
+      this.section.set(crumbs.at(-1) || (places.at(-1)?.label ?? 'Categories'));
     } else {
       this.section.set('Dashboard');
+      this.places.set([home]);
     }
   }
+}
+
+interface Place {
+  label: string;
+  commands: string[];
+  query: Record<string, string>;
 }
