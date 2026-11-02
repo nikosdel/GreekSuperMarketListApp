@@ -1,11 +1,17 @@
-@if (crumbs().length) {
-  <h1>{{ crumbs().slice(-1)[0] }}</h1>
+@if (path()) {
+  <button class="back-button" type="button" (click)="back()">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M14.5 6 8.5 12l6 6" />
+    </svg>
+    Back to {{ parentLabel() }}
+  </button>
 }
+<h1>{{ crumbs().length ? crumbs().slice(-1)[0] : 'Catalog' }}</h1>
 <p class="lead">
   @if (path()) {
     Search, shop, and sort stay inside {{ path() }}.
   } @else {
-    Choose a category. Search and filters cover every shop from here.
+    Open a category. Each card is a shelf you can shop.
   }
 </p>
 
@@ -22,6 +28,20 @@
 }
 @if (notice()) {
   <p class="note">{{ notice() }}</p>
+}
+
+@if (categories().length) {
+  <div class="choices">
+    @for (category of categories(); track category.name) {
+      <button type="button" class="choice" (click)="choose(category.name)">
+        <img [src]="picture(category.name)" alt="" />
+        <span class="choice-copy">
+          <strong>{{ category.name }}</strong>
+          <span class="muted">{{ category.products }} products</span>
+        </span>
+      </button>
+    }
+  </div>
 }
 
 <form class="filters" [formGroup]="form" (ngSubmit)="applyFilters()">
@@ -48,17 +68,6 @@
   <button class="primary" type="submit">Apply</button>
 </form>
 
-@if (categories().length) {
-  <div class="choices">
-    @for (category of categories(); track category.name) {
-      <button type="button" class="choice" (click)="choose(category.name)">
-        <strong>{{ category.name }}</strong>
-        <span class="muted">{{ category.products }} products</span>
-      </button>
-    }
-  </div>
-}
-
 @if (loading()) {
   <p class="muted">Loading products.</p>
 } @else if (products(); as rows) {
@@ -69,6 +78,7 @@
   <ul class="sheet">
     @for (product of rows; track product.id) {
       <li class="row">
+        <img class="thumb" [src]="productPicture(product)" alt="" />
         <span>
           <strong>{{ product.name }}</strong>
           <span class="muted">{{ detail(product) }}</span>

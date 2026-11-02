@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Api } from './api';
+import { categoryPicture } from './category-pictures';
 import { euro } from './money';
 import { CatalogProduct, ShoppingList } from './models';
 
@@ -63,6 +64,27 @@ export class CatalogPage {
 
   crumbPath(index: number): string {
     return this.crumbs().slice(0, index + 1).join(' > ');
+  }
+
+  parentLabel(): string {
+    const crumbs = this.crumbs();
+    return crumbs.length <= 1 ? 'All categories' : crumbs[crumbs.length - 2];
+  }
+
+  picture(name: string): string {
+    return categoryPicture(this.path(), name);
+  }
+
+  productPicture(product: CatalogProduct): string {
+    const parts = (product.category_path || '').split(' > ').filter(Boolean);
+    const name = parts.pop() || product.name;
+    return categoryPicture(parts.join(' > '), name);
+  }
+
+  async back(): Promise<void> {
+    const crumbs = this.crumbs();
+    const path = crumbs.length <= 1 ? '' : crumbs.slice(0, -1).join(' > ');
+    await this.show({ path, offset: 0 });
   }
 
   detail(product: CatalogProduct): string {
