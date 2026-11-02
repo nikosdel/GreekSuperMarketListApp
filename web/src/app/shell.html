@@ -1,23 +1,59 @@
-<header class="bar">
-  <div class="column bar-inner">
-    <a class="mark" routerLink="/" (click)="closeMenu()" aria-label="Open lists">
+<div class="app">
+  <button type="button" class="scrim" [class.open]="menuOpen()" aria-label="Close menu" (click)="menuOpen.set(false)"></button>
+  <aside class="sidebar" [class.open]="menuOpen()">
+    <a class="mark" routerLink="/" (click)="menuOpen.set(false)">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M6 5.5h12M6 5.5v14M6 10h12M6 14.5h8" />
       </svg>
       <span>Lists</span>
     </a>
-    <button class="text menu-button" type="button" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen()">
-      Menu
-    </button>
-    <nav [class.open]="menuOpen()">
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Open</a>
-      <a routerLink="/history" routerLinkActive="active" (click)="closeMenu()">History</a>
-      <a routerLink="/notices" routerLinkActive="active" (click)="closeMenu()">Notices</a>
+    <nav>
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }" (click)="menuOpen.set(false)">Catalog</a>
+      <a routerLink="/lists" routerLinkActive="active" [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }" (click)="menuOpen.set(false)">Open lists</a>
+      <a routerLink="/history" routerLinkActive="active" (click)="menuOpen.set(false)">History</a>
+    </nav>
+    <div class="sidebar-foot">
       <span class="who">{{ account()?.display_name }}</span>
       <button class="text" type="button" (click)="logout()">Log out</button>
-    </nav>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <button class="text menu-button" type="button" (click)="toggleMenu()">Menu</button>
+      <p class="section">{{ section() }}</p>
+      <div class="bell-wrap" #bellRoot>
+        <button class="bell" type="button" aria-label="Notices" (click)="toggleBell($event)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15Z" />
+            <path d="M10 18a2 2 0 0 0 4 0" />
+          </svg>
+          @if (unread() > 0) {
+            <span class="badge">{{ unread() > 9 ? '9+' : unread() }}</span>
+          }
+        </button>
+        @if (bellOpen()) {
+          <div class="bell-panel" (click)="$event.stopPropagation()">
+            <p class="panel-title">Notices</p>
+            @if (!notices().length) {
+              <p class="muted">No notices yet.</p>
+            } @else {
+              <ul>
+                @for (notice of notices(); track notice.id) {
+                  <li>
+                    <button type="button" [class.unread]="!notice.read_at" (click)="openNotice(notice)">
+                      <span>{{ notice.message }}</span>
+                      <span class="muted">{{ when(notice.created_at) }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+      </div>
+    </header>
+    <main class="canvas">
+      <router-outlet />
+    </main>
   </div>
-</header>
-<main class="column page">
-  <router-outlet />
-</main>
+</div>

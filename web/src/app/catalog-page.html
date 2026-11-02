@@ -1,0 +1,95 @@
+@if (crumbs().length) {
+  <h1>{{ crumbs().slice(-1)[0] }}</h1>
+}
+<p class="lead">
+  @if (path()) {
+    Search, shop, and sort stay inside {{ path() }}.
+  } @else {
+    Choose a category. Search and filters cover every shop from here.
+  }
+</p>
+
+<p class="crumbs">
+  <button type="button" class="text" (click)="show({ path: '', offset: 0 })">All categories</button>
+  @for (crumb of crumbs(); track crumb; let index = $index) {
+    <span aria-hidden="true">/</span>
+    <button type="button" class="text" (click)="show({ path: crumbPath(index), offset: 0 })">{{ crumb }}</button>
+  }
+</p>
+
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+}
+@if (notice()) {
+  <p class="note">{{ notice() }}</p>
+}
+
+<form class="filters" [formGroup]="form" (ngSubmit)="applyFilters()">
+  <label>
+    @if (path()) { Search in this category } @else { Search }
+    <input type="search" formControlName="q" placeholder="Name or size" />
+  </label>
+  <label>
+    Shop
+    <select formControlName="chain">
+      <option value="">All shops</option>
+      @for (chain of chains(); track chain) {
+        <option [value]="chain">{{ chain }}</option>
+      }
+    </select>
+  </label>
+  <label>
+    Sort
+    <select formControlName="sort">
+      <option value="price">Cheapest</option>
+      <option value="name">Name</option>
+    </select>
+  </label>
+  <button class="primary" type="submit">Apply</button>
+</form>
+
+@if (categories().length) {
+  <div class="choices">
+    @for (category of categories(); track category.name) {
+      <button type="button" class="choice" (click)="choose(category.name)">
+        <strong>{{ category.name }}</strong>
+        <span class="muted">{{ category.products }} products</span>
+      </button>
+    }
+  </div>
+}
+
+@if (loading()) {
+  <p class="muted">Loading products.</p>
+} @else if (products(); as rows) {
+  @if (!rows.length) {
+    <p class="sheet empty">No products match these filters.</p>
+  } @else {
+  <p class="muted result-count">{{ total() }} products</p>
+  <ul class="sheet">
+    @for (product of rows; track product.id) {
+      <li class="row">
+        <span>
+          <strong>{{ product.name }}</strong>
+          <span class="muted">{{ detail(product) }}</span>
+        </span>
+        <span class="price">{{ euro(product.price) }}</span>
+        @if (lists().length) {
+          <select aria-label="Add to a list" (change)="add(product, $any($event.target).value); $any($event.target).value = ''">
+            <option value="">Add to list</option>
+            @for (list of lists(); track list.id) {
+              <option [value]="list.id">{{ list.title }}</option>
+            }
+          </select>
+        } @else {
+          <a routerLink="/lists">Create a list</a>
+        }
+      </li>
+    }
+  </ul>
+  <div class="pager">
+    <button class="secondary" type="button" [disabled]="form.controls.offset.value <= 0" (click)="page(form.controls.offset.value - limit)">Previous</button>
+    <button class="secondary" type="button" [disabled]="form.controls.offset.value + limit >= total()" (click)="page(form.controls.offset.value + limit)">Next</button>
+  </div>
+  }
+}

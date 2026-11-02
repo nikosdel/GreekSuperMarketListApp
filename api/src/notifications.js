@@ -20,7 +20,14 @@ async function listNotifications(req, res) {
      LIMIT 50`,
     [req.userId],
   );
+  const unread = await pool.query(
+    `SELECT count(*)::int AS unread
+     FROM list_notification
+     WHERE user_id = $1 AND read_at IS NULL`,
+    [req.userId],
+  );
   res.json({
+    unread_count: unread.rows[0].unread,
     notifications: rows.rows.map((row) => ({
       id: Number(row.id),
       list_id: Number(row.list_id),

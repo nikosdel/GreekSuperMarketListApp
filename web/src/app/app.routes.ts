@@ -9,10 +9,11 @@ export const routes: Routes = [
     canActivate: [signedIn],
     loadComponent: () => import('./shell').then((m) => m.Shell),
     children: [
-      { path: '', loadComponent: () => import('./lists-page').then((m) => m.ListsPage) },
+      { path: '', loadComponent: () => import('./catalog-page').then((m) => m.CatalogPage) },
+      { path: 'lists', loadComponent: () => import('./lists-page').then((m) => m.ListsPage) },
       { path: 'history', loadComponent: () => import('./history-page').then((m) => m.HistoryPage) },
-      { path: 'notices', loadComponent: () => import('./notices-page').then((m) => m.NoticesPage) },
       { path: 'lists/:id', loadComponent: () => import('./list-page').then((m) => m.ListPage) },
+      { path: 'notices', redirectTo: '', pathMatch: 'full' },
     ],
   },
 ];
