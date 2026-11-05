@@ -8,7 +8,9 @@ export function listRoutes(app) {
   app.post("/lists", requireUser, asyncRoute(createList));
   app.get("/lists", requireUser, asyncRoute(myLists));
   app.post("/lists/join", requireUser, asyncRoute(joinList));
+  app.delete("/lists/:id", requireUser, asyncRoute(deleteList));
   app.get("/lists/:id", requireUser, asyncRoute(listDetail));
+  app.delete("/lists/:id/members/:memberId", requireUser, asyncRoute(removeMember));
   app.post("/lists/:id/items", requireUser, asyncRoute(addItem));
   app.patch("/lists/:id/items/:itemId", requireUser, asyncRoute(updateItem));
   app.delete("/lists/:id/items/:itemId", requireUser, asyncRoute(removeItem));
@@ -48,6 +50,32 @@ async function myLists(req, res) {
     [req.userId],
   );
   res.json({ lists: rows.rows.map(publicList) });
+}
+
+async function deleteList(req, res) {
+  const listId = cleanId(req.params.id);
+  await withTx(async (client) => {
+    const found = await client.query(
+      `SELECT list.id, list.status, member.role
+       FROM shopping_list list
+       JOIN shopping_list_member member ON member.list_id = list.id
+       WHERE list.id = $1 AND member.user_id = $2
+       FOR UPDATE OF list, member`,
+      [listId, req.userId],
+    );
+    const list = found.rows[0];
+    if (!list) {
+      throw new HttpError(404, "not_found", "That list is not available to you.");
+    }
+    if (list.role !== "owner") {
+      throw new HttpError(403, "forbidden", "Only the list owner can delete it.");
+    }
+    if (list.status !== "open") {
+      throw new HttpError(409, "list_saved", "Saved lists in history cannot be deleted.");
+    }
+    await client.query("DELETE FROM shopping_list WHERE id = $1", [listId]);
+  });
+  res.status(204).end();
 }
 
 async function joinList(req, res) {
@@ -91,12 +119,13 @@ async function listDetail(req, res) {
   const listId = cleanId(req.params.id);
   await assertMember(listId, req.userId);
   const list = await pool.query(
-    `SELECT list.id, list.title, list.status, list.invite_code, list.created_at, list.saved_at,
+    `SELECT list.id, list.title, list.status, list.invite_code, list.created_at, list.saved_at, actor.role,
             saver.display_name AS saved_by_name
      FROM shopping_list list
+     JOIN shopping_list_member actor ON actor.list_id = list.id AND actor.user_id = $2
      LEFT JOIN app_user saver ON saver.id = list.saved_by
      WHERE list.id = $1`,
-    [listId],
+    [listId, req.userId],
   );
   const members = await pool.query(
     `SELECT app_user.id, app_user.display_name, member.role
@@ -110,7 +139,8 @@ async function listDetail(req, res) {
     `SELECT item.id, item.product_id, item.quantity, item.product_name, item.chain_name,
             item.price_at_save, item.unit_price_at_save, item.added_by,
             current_price.price AS current_price, current_price.unit_price_text,
-            product.image_url
+            product.image_url,
+            (SELECT chain.logo_url FROM chain WHERE chain.name = item.chain_name ORDER BY chain.id LIMIT 1) AS chain_logo_url
      FROM shopping_list_item item
      LEFT JOIN product ON product.id = item.product_id
      LEFT JOIN current_price ON current_price.product_id = item.product_id
@@ -127,6 +157,62 @@ async function listDetail(req, res) {
     })),
     items: items.rows.map(publicItem),
   });
+}
+
+async function removeMember(req, res) {
+  const listId = cleanId(req.params.id);
+  const memberId = cleanId(req.params.memberId);
+  const result = await withTx(async (client) => {
+    const found = await client.query(
+      `SELECT list.id, list.title, list.status, actor.role
+       FROM shopping_list list
+       JOIN shopping_list_member actor ON actor.list_id = list.id
+       WHERE list.id = $1 AND actor.user_id = $2
+       FOR UPDATE OF list, actor`,
+      [listId, req.userId],
+    );
+    const list = found.rows[0];
+    if (!list) {
+      throw new HttpError(404, "not_found", "That list is not available to you.");
+    }
+    if (list.role !== "owner") {
+      throw new HttpError(403, "forbidden", "Only the list owner can remove a member.");
+    }
+    if (list.status !== "open") {
+      throw new HttpError(409, "list_saved", "Members cannot be removed from a saved list.");
+    }
+    if (memberId === req.userId) {
+      throw new HttpError(400, "invalid_request", "The owner cannot remove themselves from the list.");
+    }
+    const target = await client.query(
+      `SELECT member.role, app_user.display_name
+       FROM shopping_list_member member
+       JOIN app_user ON app_user.id = member.user_id
+       WHERE member.list_id = $1 AND member.user_id = $2
+       FOR UPDATE OF member`,
+      [listId, memberId],
+    );
+    if (!target.rows[0]) {
+      throw new HttpError(404, "not_found", "That member is not on this list.");
+    }
+    if (target.rows[0].role === "owner") {
+      throw new HttpError(403, "forbidden", "The list owner cannot be removed.");
+    }
+    await client.query(
+      "DELETE FROM shopping_list_member WHERE list_id = $1 AND user_id = $2",
+      [listId, memberId],
+    );
+    const actor = await displayName(client, req.userId);
+    const notices = await notifyOthers(client, {
+      listId,
+      actorId: req.userId,
+      kind: "member_removed",
+      message: `${actor} removed ${target.rows[0].display_name} from ${list.title}.`,
+    });
+    return { notices };
+  });
+  deliver(result.notices);
+  res.status(204).end();
 }
 
 async function addItem(req, res) {
@@ -343,6 +429,7 @@ function publicItem(row) {
     quantity: row.quantity,
     product_name: row.product_name,
     chain_name: row.chain_name,
+    chain_logo_url: row.chain_logo_url || null,
     price_at_save: row.price_at_save === null || row.price_at_save === undefined ? null : Number(row.price_at_save),
     unit_price_at_save: row.unit_price_at_save === null || row.unit_price_at_save === undefined ? null : Number(row.unit_price_at_save),
     current_price: row.current_price === null || row.current_price === undefined ? null : Number(row.current_price),
@@ -370,8 +457,8 @@ function cleanId(value) {
 
 function cleanQuantity(value) {
   const quantity = Number(value);
-  if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 9999) {
-    throw new HttpError(400, "invalid_request", "Quantity must be greater than 0.");
+  if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 9999) {
+    throw new HttpError(400, "invalid_request", "Quantity must be a whole number from 1 to 9999.");
   }
-  return quantity.toFixed(3);
+  return String(quantity);
 }

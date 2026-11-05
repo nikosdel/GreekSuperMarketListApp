@@ -1,104 +1,269 @@
+<a class="back-link" routerLink="/">{{ 'list.back' | t }}</a>
+
 @if (error()) {
-  <p class="error">{{ error() }}</p>
+  <p class="error" role="alert">{{ error() }}</p>
+}
+@if (notice()) {
+  <p class="notice-line" role="status">{{ notice() }}</p>
 }
 
 @if (list(); as list) {
-  <p class="back"><a routerLink="/lists">Lists</a></p>
-  <header class="title-row">
+  <header class="page-head list-page-head">
     <div>
       <h1>{{ list.title }}</h1>
-      @if (list.status === 'saved') {
-        <p class="lead">Saved by {{ list.saved_by_name || 'a member' }} on {{ when(list.saved_at) }}. The prices below are the ones copied then.</p>
-      } @else {
-        <p class="lead">Everyone on this list can add, change, and remove products. Saving copies the current prices and locks the list.</p>
+      <p class="lead">
+        {{ (list.status === 'open' ? 'list.openLead' : 'list.savedLead') | t }}
+        @if (list.status === 'saved' && list.saved_at) {
+          · {{ list.saved_at | when }}
+        }
+      </p>
+    </div>
+    <div class="list-page-actions">
+      <button
+        class="secondary members-trigger"
+        type="button"
+        aria-controls="members-drawer"
+        [attr.aria-expanded]="memberDrawerOpen()"
+        (click)="memberDrawerOpen.set(true)"
+      >
+        {{ 'list.members' | t }} <span>{{ list.members.length }}</span>
+      </button>
+      @if (list.status === 'open') {
+        <button class="primary" type="button" (click)="save()">{{ 'action.saveList' | t }}</button>
       }
     </div>
-    @if (list.status === 'open') {
-      <button class="primary" type="button" (click)="save()">Save list</button>
-    }
   </header>
 
-  @if (notice()) {
-    <p class="note">{{ notice() }}</p>
-  }
-
-  <div class="meta-row">
-    @if (list.status === 'open' && list.invite_code) {
-      <p class="invite">
-        <span>{{ list.invite_code }}</span>
-        <button class="text" type="button" (click)="copyCode(list.invite_code || '')">Copy</button>
-      </p>
-    }
-    @for (member of list.members; track member.id) {
-      <span class="role">{{ member.display_name }} · {{ member.role }}</span>
-    }
-  </div>
-
-  @if (list.status === 'open') {
-    <form class="search-bar" [formGroup]="form" (ngSubmit)="search()">
-      <label>
-        Add a product
-        <input type="search" formControlName="query" placeholder="γάλα 1lt" />
-      </label>
-      <button class="secondary" type="submit" [disabled]="searching()">Search catalog</button>
-    </form>
-    @if (results().length) {
-      <div class="goods">
-        @for (product of results(); track product.id) {
-          <article class="good">
-            @if (product.image_url) {
-              <img class="good-photo" [src]="product.image_url" [alt]="product.name" />
-            } @else {
-              <span class="good-photo"></span>
+  @if (memberDrawerOpen()) {
+    <button
+      class="drawer-scrim"
+      type="button"
+      [attr.aria-label]="'action.cancel' | t"
+      (click)="closeMemberDrawer()"
+    ></button>
+    <aside
+      class="member-drawer"
+      id="members-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="members-title"
+      (keydown.escape)="closeMemberDrawer()"
+    >
+      <header class="drawer-heading">
+        <h2 id="members-title">{{ 'list.members' | t }}</h2>
+        <button
+          class="icon-close"
+          type="button"
+          [attr.aria-label]="'action.cancel' | t"
+          (click)="closeMemberDrawer()"
+        >×</button>
+      </header>
+      @if (list.status === 'open' && list.invite_code) {
+        <div class="invite-code">
+          <span>{{ list.invite_code }}</span>
+          <button class="text-link" type="button" (click)="copyCode(list.invite_code || '')">
+            {{ 'list.copyCode' | t }}
+          </button>
+        </div>
+      }
+      <div class="member-list">
+        @for (member of list.members; track member.id) {
+          <div class="member-row">
+            <span class="member-initial" aria-hidden="true">{{ member.display_name.charAt(0) }}</span>
+            <span class="member-name">{{ member.display_name }}</span>
+            <span class="member-role">{{ (member.role === 'owner' ? 'common.owner' : 'common.editor') | t }}</span>
+            @if (list.status === 'open' && isOwner() && member.role !== 'owner' && member.id !== account()?.id) {
+              <button
+                class="text-link destructive-link"
+                type="button"
+                [disabled]="removingMemberId() === member.id"
+                (click)="removeMember(member)"
+              >
+                {{ 'list.removeMember' | t }}
+              </button>
             }
-            <span class="good-copy">
-              <strong>{{ product.name }}</strong>
-              <span class="muted">{{ product.chain_name }}</span>
-            </span>
-            <span class="good-buy">
-              <span class="price">{{ euro(product.price) }}</span>
-              <button class="add" type="button" (click)="add(product)">Add</button>
-            </span>
-          </article>
-        }
-      </div>
-    }
-  }
-
-  <h2>On the list</h2>
-  @if (!list.items.length) {
-    <p class="empty">Nothing on this list yet. Search above, or add a product from a shelf.</p>
-  } @else {
-    <div class="panel">
-      <div class="panel-body">
-      <div class="basket-lines">
-        @for (item of list.items; track item.id) {
-          <div class="basket-line">
-            @if (item.image_url) {
-              <img class="thumb" [src]="item.image_url" [alt]="item.product_name" />
-            } @else {
-              <span class="thumb"></span>
-            }
-            <span class="name">
-              <strong>{{ item.product_name }}</strong>
-              <span class="muted">{{ item.chain_name }}@if (lineUnit(item)) { · {{ lineUnit(item) }} }</span>
-            </span>
-            <span class="line-actions">
-              <span class="price">{{ euro(linePrice(item)) }}</span>
-              @if (list.status === 'open') {
-                <label class="qty">
-                  <input aria-label="Quantity" type="number" min="0.001" step="1" [value]="item.quantity" (change)="changeQuantity(item.id, $any($event.target).value)" />
-                </label>
-                <button class="text" type="button" (click)="remove(item.id)">Remove</button>
-              } @else {
-                <span class="muted">Qty {{ amount(item.quantity) }}</span>
-              }
-            </span>
           </div>
         }
       </div>
-      <p class="total-line"><span>Total</span> <strong class="price">{{ euro(listTotal()) }}</strong></p>
-      </div>
-    </div>
+    </aside>
   }
+
+  @if (list.status === 'open') {
+    <section class="content-section add-section" aria-labelledby="add-product-title">
+      <header class="section-heading">
+        <div>
+          <h2 id="add-product-title">{{ 'list.addProduct' | t }}</h2>
+          <p class="muted">{{ 'list.searchHint' | t }}</p>
+        </div>
+      </header>
+      <form class="search-bar" [formGroup]="form" (ngSubmit)="search()">
+        <label class="search-field">
+          {{ 'catalog.search' | t }}
+          <input type="search" formControlName="query" [placeholder]="'list.searchPlaceholder' | t" />
+        </label>
+        <button class="primary" type="submit" [disabled]="searching()">
+          {{ searching() ? ('common.loading' | t) : ('action.search' | t) }}
+        </button>
+      </form>
+
+      @if (results().length) {
+        <div class="product-list search-results product-grid">
+          @for (product of results(); track product.key) {
+            <article class="product-row">
+              <div class="product-thumb" aria-hidden="true">
+                @if (product.image_url) {
+                  <img [src]="product.image_url" alt="" loading="lazy" decoding="async" (error)="onImageError($event)" />
+                }
+                <svg viewBox="0 0 32 32" focusable="false">
+                  <path d="M7 10.5 16 6l9 4.5v11L16 26l-9-4.5zM7 10.5l9 4.7 9-4.7M16 15.2V26" />
+                </svg>
+              </div>
+              <div class="product-identity">
+                <h3>{{ product.name }}</h3>
+                <p class="muted">{{ 'catalog.offerCount' | t: { count: product.offer_count } }}</p>
+              </div>
+              <div class="product-choice">
+                <span class="price">{{ product.lowest_price | eur }}</span>
+                <button class="secondary" type="button" (click)="openOffers(product)">
+                  {{ 'action.chooseOffer' | t }}
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+      } @else if (searched()) {
+        <p class="empty-state">{{ 'list.noResults' | t }}</p>
+      }
+    </section>
+  }
+
+  <section class="content-section items-section" aria-labelledby="items-title">
+    <header class="section-heading">
+      <div>
+        <h2 id="items-title">{{ 'list.onList' | t }}</h2>
+        <p class="muted">{{ (list.items.length === 1 ? 'common.product' : 'common.products') | t: { count: list.items.length } }}</p>
+      </div>
+      @if (list.items.length) {
+        <p class="list-total"><span>{{ 'common.total' | t }}</span><strong>{{ listTotal() | eur }}</strong></p>
+      }
+    </header>
+    @if (!list.items.length) {
+      <p class="empty-state">{{ 'list.empty' | t }}</p>
+    } @else {
+      @for (group of storeGroups(); track group.chainName) {
+        <section class="store-group">
+          <header class="store-group-heading">
+            <h3>
+              @if (group.logoUrl) {
+                <img class="chain-logo" [src]="group.logoUrl" alt="" />
+              }
+              {{ group.chainName }}
+            </h3>
+            <div class="store-group-summary">
+              <span class="muted">
+                {{ (group.items.length === 1 ? 'common.product' : 'common.products') | t: { count: group.items.length } }}
+              </span>
+              @if (group.total !== null) {
+                <span class="store-group-total">
+                  <span class="muted">{{ 'common.total' | t }}</span>
+                  <strong>{{ group.total | eur }}</strong>
+                </span>
+              }
+            </div>
+          </header>
+          <div class="product-list">
+            @for (item of group.items; track item.id) {
+              <article class="product-row list-item-row">
+                <div class="product-thumb" aria-hidden="true">
+                  @if (item.image_url) {
+                    <img [src]="item.image_url" alt="" loading="lazy" decoding="async" (error)="onImageError($event)" />
+                  }
+                  <svg viewBox="0 0 32 32" focusable="false">
+                    <path d="M7 10.5 16 6l9 4.5v11L16 26l-9-4.5zM7 10.5l9 4.7 9-4.7M16 15.2V26" />
+                  </svg>
+                </div>
+                <div class="product-identity">
+                  <h4>{{ item.product_name }}</h4>
+                  @if (lineUnit(item)) {
+                    <p class="muted">{{ lineUnit(item) }}</p>
+                  }
+                </div>
+                <div class="item-controls">
+                  <span class="price">{{ linePrice(item) | eur }}</span>
+                  @if (list.status === 'open') {
+                    <label class="quantity-control">
+                      <span>{{ 'list.quantity' | t }}</span>
+                      <input
+                        [attr.aria-label]="'list.quantity' | t"
+                        type="number"
+                        min="0"
+                        max="9999"
+                        step="1"
+                        [value]="item.quantity | quantity"
+                        (change)="changeQuantity(item.id, $any($event.target))"
+                      />
+                    </label>
+                    <button class="text-link destructive-link" type="button" (click)="remove(item.id)">
+                      {{ 'action.remove' | t }}
+                    </button>
+                  } @else {
+                    <span class="muted">{{ item.quantity | quantity }}</span>
+                  }
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+        }
+    }
+  </section>
+}
+
+@if (selectedProduct(); as product) {
+  <button class="modal-scrim" type="button" [attr.aria-label]="'action.cancel' | t" (click)="closeOffers()"></button>
+  <section class="offer-dialog" role="dialog" aria-modal="true" aria-labelledby="offer-title" (keydown.escape)="closeOffers()">
+    <header class="dialog-heading">
+      <div>
+        <h2 id="offer-title">{{ 'list.priceByStore' | t }}</h2>
+        <p class="muted">{{ product.name }}</p>
+      </div>
+      <button class="icon-close" type="button" [attr.aria-label]="'action.cancel' | t" (click)="closeOffers()">×</button>
+    </header>
+    <p class="dialog-label">{{ 'list.chooseStore' | t }}</p>
+    <div class="offer-list">
+      @for (offer of product.offers; track offer.id) {
+        <button
+          class="offer-row"
+          type="button"
+          [class.selected]="selectedOfferId() === offer.id"
+          [attr.aria-pressed]="selectedOfferId() === offer.id"
+          (click)="chooseOffer(offer)"
+        >
+          <span class="offer-select-mark" aria-hidden="true"></span>
+          <span class="offer-shop">
+            <strong>
+              @if (offer.chain_logo_url) {
+                <img class="chain-logo" [src]="offer.chain_logo_url" alt="" />
+              }
+              {{ offer.chain_name }}
+            </strong>
+            <span class="muted">
+              {{ offer.unit_price_text || '—' }}
+              @if (offer.observed_at) { · {{ 'common.updated' | t }} {{ offer.observed_at | when }} }
+            </span>
+          </span>
+          <span class="offer-price">{{ offer.price | eur }}</span>
+        </button>
+      }
+    </div>
+    @if (!product.offers.length) {
+      <p class="empty-state">{{ 'list.noOffer' | t }}</p>
+    }
+    <footer class="dialog-actions">
+      <button class="secondary" type="button" (click)="closeOffers()">{{ 'action.cancel' | t }}</button>
+      <button class="primary" type="button" [disabled]="selectedOfferId() === null || adding()" (click)="addSelectedOffer()">
+        {{ adding() ? ('common.loading' | t) : ('action.add' | t) }}
+      </button>
+    </footer>
+  </section>
 }

@@ -118,6 +118,7 @@ class Chain:
     name: str
     country: str
     website_url: str
+    logo_url: str | None = None
 
 
 @dataclass
@@ -159,14 +160,15 @@ def upsert_products(
     with conn.transaction():
         conn.execute(
             """
-            INSERT INTO chain (id, name, country, website_url)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO chain (id, name, country, website_url, logo_url)
+            VALUES (%s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE
                 SET name = EXCLUDED.name,
                     country = EXCLUDED.country,
-                    website_url = EXCLUDED.website_url
+                    website_url = EXCLUDED.website_url,
+                    logo_url = COALESCE(EXCLUDED.logo_url, chain.logo_url)
             """,
-            (chain.id, chain.name, chain.country, chain.website_url),
+            (chain.id, chain.name, chain.country, chain.website_url, chain.logo_url),
         )
         for product in products:
             price = product.price if product.currency == "EUR" else None

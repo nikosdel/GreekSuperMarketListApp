@@ -11,12 +11,18 @@ export interface ShoppingList {
   member_count?: number;
 }
 
+export interface CatalogChain {
+  name: string;
+  logo_url: string | null;
+}
+
 export interface ListItem {
   id: number;
   product_id: number | null;
   quantity: string;
   product_name: string;
   chain_name: string;
+  chain_logo_url: string | null;
   price_at_save: number | null;
   unit_price_at_save: number | null;
   current_price: number | null;
@@ -35,15 +41,24 @@ export interface ListDetail extends ShoppingList {
   items: ListItem[];
 }
 
-export interface CatalogProduct {
+export interface CatalogOffer {
   id: number;
-  name: string;
-  category_path: string | null;
-  image_url: string | null;
   chain_name: string;
+  chain_logo_url: string | null;
   price: number | null;
   unit_price_text: string | null;
   observed_at: string | null;
+  image_url: string | null;
+}
+
+export interface CatalogProductGroup {
+  key: string;
+  name: string;
+  category_path: string | null;
+  image_url: string | null;
+  offers: CatalogOffer[];
+  lowest_price: number | null;
+  offer_count: number;
 }
 
 export interface Notice {

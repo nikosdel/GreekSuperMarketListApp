@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 
 from scraper.config import posokanei_delay_seconds
-from scraper.db import Chain, connect, upsert_products
+from scraper.db import Chain, UpsertStats, connect, upsert_products
 from scraper.parsing import CatalogProduct, to_price
 
 logger = logging.getLogger("posokanei")
@@ -172,6 +172,26 @@ def product_category(category_ids: object, paths: dict[str, str]) -> str | None:
     return chosen or None
 
 
+def logo_url(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if text.startswith("https://") or text.startswith("http://"):
+        return text
+    if text.startswith("/"):
+        return API + text
+    return None
+
+
+def chain_from_retailer(retailer_id: str, info: dict, display: str = "") -> Chain:
+    chain_name = str(info.get("name") or display or retailer_id)
+    website = info.get("website")
+    if not isinstance(website, str) or not website.startswith("http"):
+        website = ORIGIN
+    country = str(info.get("country") or "GR").upper()[:2]
+    return Chain(retailer_id, chain_name, country, website, logo_url(info.get("logo_url")))
+
+
 def rows_for_product(item: dict, paths: dict[str, str], retailers: dict[str, dict]) -> list[tuple[Chain, CatalogProduct]]:
     product_id = str(item.get("id") or "").strip()
     name = str(item.get("name") or "").strip()
@@ -198,12 +218,7 @@ def rows_for_product(item: dict, paths: dict[str, str], retailers: dict[str, dic
             continue
         info = retailers.get(retailer_id) or {}
         display = str(price_row.get("retailer_display_name") or "").strip()
-        chain_name = str(info.get("name") or display or retailer_id)
-        website = info.get("website")
-        if not isinstance(website, str) or not website.startswith("http"):
-            website = ORIGIN
-        country = str(info.get("country") or "GR").upper()[:2]
-        chain = Chain(retailer_id, chain_name, country, website)
+        chain = chain_from_retailer(retailer_id, info, display)
         unit_price = to_price(price_row.get("price_normalized"), "0.0001")
         basis = item.get("unit") if isinstance(item.get("unit"), str) else None
         built.append(
@@ -239,15 +254,55 @@ def _roots(tree_payload: dict) -> list[tuple[str, str, int]]:
     return roots
 
 
-def _save_group(grouped: dict[str, tuple[Chain, list[CatalogProduct]]], scraped_at: datetime) -> int:
-    saved = 0
+def _save_group(grouped: dict[str, tuple[Chain, list[CatalogProduct]]], scraped_at: datetime) -> UpsertStats:
+    total = UpsertStats()
     for chain, products in grouped.values():
         if not products:
             continue
         with connect() as conn:
             stats = upsert_products(conn, products, scraped_at, chain)
-        saved += stats.products
-    return saved
+        total.products += stats.products
+        total.snapshots_new += stats.snapshots_new
+        total.snapshots_refreshed += stats.snapshots_refreshed
+        total.skipped_price += stats.skipped_price
+    return total
+
+
+def _store_logos(retailers: dict[str, dict]) -> int:
+    stored = 0
+    with connect() as conn:
+        with conn.transaction():
+            for retailer_id, info in retailers.items():
+                if str(info.get("country") or "").upper() != "GR":
+                    continue
+                chain = chain_from_retailer(retailer_id, info)
+                conn.execute(
+                    """
+                    INSERT INTO chain (id, name, country, website_url, logo_url)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE
+                        SET name = EXCLUDED.name,
+                            country = EXCLUDED.country,
+                            website_url = EXCLUDED.website_url,
+                            logo_url = COALESCE(EXCLUDED.logo_url, chain.logo_url)
+                    """,
+                    (chain.id, chain.name, chain.country, chain.website_url, chain.logo_url),
+                )
+                stored += 1
+    return stored
+
+
+def _catalog_counts() -> tuple[int, int, int]:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM product),
+                (SELECT count(DISTINCT external_id) FROM product),
+                (SELECT count(*) FROM price_snapshot)
+            """
+        ).fetchone()
+    return int(row[0]), int(row[1]), int(row[2])
 
 
 def _print_report() -> None:
@@ -325,15 +380,25 @@ def run_posokanei() -> int:
         logger.error("could not read the catalog index: %s", exc)
         return 1
     paths = category_paths(tree)
+    before = _catalog_counts()
+    logger.info(
+        "before: %s product rows, %s distinct products, %s prices",
+        before[0],
+        before[1],
+        before[2],
+    )
     retailers = {
         str(row.get("id")): row
         for row in retailer_payload.get("retailers") or []
         if isinstance(row, dict) and row.get("id")
     }
+    logos = _store_logos(retailers)
+    logger.info("chain logos stored: %s", logos)
     roots = _roots(tree)
     logger.info("root categories: %s", len(roots))
     scraped_at = datetime.now(timezone.utc)
     saved = 0
+    prices_changed = 0
     failed = False
     for category_id, name, count in roots:
         page = 1
@@ -364,11 +429,21 @@ def run_posokanei() -> int:
                     _chain, bucket = grouped.get(chain.id, (chain, []))
                     bucket.append(product)
                     grouped[chain.id] = (chain, bucket)
-            saved += _save_group(grouped, scraped_at)
+            stats = _save_group(grouped, scraped_at)
+            saved += stats.products
+            prices_changed += stats.snapshots_new
             logger.info("%s page %s: %s price rows so far", name, page, len(seen))
             if not payload.get("has_next"):
                 break
             page += 1
+    after = _catalog_counts()
     logger.info("supermarket prices saved this run: %s", saved)
+    logger.info("prices changed: %s", prices_changed)
+    logger.info(
+        "after: %s product rows, %s distinct products, %s prices",
+        after[0],
+        after[1],
+        after[2],
+    )
     _print_report()
     return 0 if saved and not failed else 1
