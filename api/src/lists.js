@@ -140,7 +140,7 @@ async function listDetail(req, res) {
             item.price_at_save, item.unit_price_at_save, item.added_by,
             current_price.price AS current_price, current_price.unit_price_text,
             product.image_url,
-            (SELECT chain.logo_url FROM chain WHERE chain.name = item.chain_name ORDER BY chain.id LIMIT 1) AS chain_logo_url
+            (SELECT chain.logo_url FROM chain WHERE chain.name = item.chain_name ORDER BY chain.id LIMIT 1) AS logo_url
      FROM shopping_list_item item
      LEFT JOIN product ON product.id = item.product_id
      LEFT JOIN current_price ON current_price.product_id = item.product_id
@@ -222,7 +222,7 @@ async function addItem(req, res) {
   const result = await withTx(async (client) => {
     const list = await openListForMember(client, listId, req.userId);
     const product = await client.query(
-      `SELECT product.name, chain.name AS chain_name
+      `SELECT product.name, chain.name AS chain_name, chain.logo_url
        FROM product
        JOIN chain ON chain.id = product.chain_id
        WHERE product.id = $1`,
@@ -245,7 +245,7 @@ async function addItem(req, res) {
          RETURNING id, product_id, quantity, product_name, chain_name, price_at_save, unit_price_at_save, added_by`,
         [existing.rows[0].id, quantity],
       );
-      item = updated.rows[0];
+      item = { ...updated.rows[0], logo_url: product.rows[0].logo_url };
       kind = "item_updated";
     } else {
       const inserted = await client.query(
@@ -255,7 +255,7 @@ async function addItem(req, res) {
          RETURNING id, product_id, quantity, product_name, chain_name, price_at_save, unit_price_at_save, added_by`,
         [listId, productId, quantity, req.userId, product.rows[0].name, product.rows[0].chain_name],
       );
-      item = inserted.rows[0];
+      item = { ...inserted.rows[0], logo_url: product.rows[0].logo_url };
       kind = "item_added";
     }
     const actor = await displayName(client, req.userId);
@@ -282,7 +282,8 @@ async function updateItem(req, res) {
       `UPDATE shopping_list_item
        SET quantity = $3, updated_at = now()
        WHERE id = $1 AND list_id = $2
-       RETURNING id, product_id, quantity, product_name, chain_name, price_at_save, unit_price_at_save, added_by`,
+       RETURNING id, product_id, quantity, product_name, chain_name, price_at_save, unit_price_at_save, added_by,
+         (SELECT chain.logo_url FROM chain WHERE chain.name = shopping_list_item.chain_name ORDER BY chain.id LIMIT 1) AS logo_url`,
       [itemId, listId, quantity],
     );
     if (!updated.rows[0]) {
@@ -429,7 +430,8 @@ function publicItem(row) {
     quantity: row.quantity,
     product_name: row.product_name,
     chain_name: row.chain_name,
-    chain_logo_url: row.chain_logo_url || null,
+    logo_url: row.logo_url || row.chain_logo_url || null,
+    chain_logo_url: row.logo_url || row.chain_logo_url || null,
     price_at_save: row.price_at_save === null || row.price_at_save === undefined ? null : Number(row.price_at_save),
     unit_price_at_save: row.unit_price_at_save === null || row.unit_price_at_save === undefined ? null : Number(row.unit_price_at_save),
     current_price: row.current_price === null || row.current_price === undefined ? null : Number(row.current_price),

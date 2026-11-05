@@ -21,6 +21,7 @@ test("groups exact product identities while preserving separate supermarket offe
       name: "ROYAL Γάλα Μακράς Διάρκειας Πλήρες 1lt",
       category_path: "Γάλα",
       chain_name: "Χαλκιαδάκης",
+      logo_url: "https://api.posokanei.gov.gr/images/retailer/xalkiadakis",
       price: "1.10",
       unit_price_text: "1,10 €/λίτρο",
       observed_at: "2026-11-05",
@@ -44,6 +45,9 @@ test("groups exact product identities while preserving separate supermarket offe
   assert.equal(products[0].offer_count, 2);
   assert.equal(products[0].image_url, "https://example.test/milk-xalk.jpg");
   assert.equal(products[0].offers[0].image_url, "https://example.test/milk-xalk.jpg");
+  assert.equal(products[0].offers[0].logo_url, "https://api.posokanei.gov.gr/images/retailer/xalkiadakis");
+  assert.equal(products[0].offers[0].chain_logo_url, "https://api.posokanei.gov.gr/images/retailer/xalkiadakis");
+  assert.equal(products[0].offers[1].logo_url, null);
   assert.equal(products[1].offers.length, 1);
 });
 

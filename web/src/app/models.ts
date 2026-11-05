@@ -22,6 +22,7 @@ export interface ListItem {
   quantity: string;
   product_name: string;
   chain_name: string;
+  logo_url: string | null;
   chain_logo_url: string | null;
   price_at_save: number | null;
   unit_price_at_save: number | null;
@@ -44,6 +45,7 @@ export interface ListDetail extends ShoppingList {
 export interface CatalogOffer {
   id: number;
   chain_name: string;
+  logo_url: string | null;
   chain_logo_url: string | null;
   price: number | null;
   unit_price_text: string | null;

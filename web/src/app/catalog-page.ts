@@ -59,7 +59,7 @@ export class CatalogPage {
     for (const item of detail.items) {
       const chainName = item.chain_name.trim();
       const key = chainName.toLocaleLowerCase();
-      const group = groups.get(key) ?? { chainName, logoUrl: item.chain_logo_url, items: [] };
+      const group = groups.get(key) ?? { chainName, logoUrl: item.logo_url || item.chain_logo_url, items: [] };
       group.items.push(item);
       groups.set(key, group);
     }

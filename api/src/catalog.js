@@ -204,10 +204,12 @@ export function groupProductRows(rows) {
       };
       groups.set(row.identity_key, group);
     }
+    const logoUrl = row.logo_url || row.chain_logo_url || null;
     group.offers.push({
       id: Number(row.id),
       chain_name: row.chain_name,
-      chain_logo_url: row.chain_logo_url || null,
+      logo_url: logoUrl,
+      chain_logo_url: logoUrl,
       price: row.price === null ? null : Number(row.price),
       unit_price_text: row.unit_price_text,
       observed_at: row.observed_at,

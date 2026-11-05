@@ -66,7 +66,8 @@ function readLegacyOffer(row: CatalogRow, imageUrl: string | null): CatalogOffer
   return {
     id,
     chain_name: row['chain_name'],
-    chain_logo_url: nullableString(row['chain_logo_url']),
+    logo_url: nullableString(row['logo_url'] ?? row['chain_logo_url']),
+    chain_logo_url: nullableString(row['logo_url'] ?? row['chain_logo_url']),
     price: readNullableNumber(row['price']),
     unit_price_text: nullableString(row['unit_price_text']),
     observed_at: nullableString(row['observed_at']),
@@ -86,7 +87,8 @@ function readOffer(value: unknown): CatalogOffer | null {
   return {
     id,
     chain_name: row['chain_name'],
-    chain_logo_url: nullableString(row['chain_logo_url']),
+    logo_url: nullableString(row['logo_url'] ?? row['chain_logo_url']),
+    chain_logo_url: nullableString(row['logo_url'] ?? row['chain_logo_url']),
     price: readNullableNumber(row['price']),
     unit_price_text: nullableString(row['unit_price_text']),
     observed_at: nullableString(row['observed_at']),
