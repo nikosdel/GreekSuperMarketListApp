@@ -3,11 +3,12 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Api } from './api';
 import { Basket } from './basket';
+import { Language, TranslatePipe } from './language';
 import { ShoppingList } from './models';
 
 @Component({
   selector: 'app-lists',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, TranslatePipe],
   templateUrl: './lists-page.html',
 })
 export class ListsPage {
@@ -15,9 +16,11 @@ export class ListsPage {
   private router = inject(Router);
   private forms = inject(FormBuilder);
   private basket = inject(Basket);
+  private language = inject(Language);
   readonly lists = signal<ShoppingList[] | null>(null);
   readonly error = signal('');
   readonly copied = signal(false);
+  readonly deletingListId = signal<number | null>(null);
   readonly form = this.forms.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(120)]],
     invite_code: [''],
@@ -80,7 +83,33 @@ export class ListsPage {
     if (!code) {
       return;
     }
-    await navigator.clipboard.writeText(code);
-    this.copied.set(true);
+    try {
+      await navigator.clipboard.writeText(code);
+      this.copied.set(true);
+      this.error.set('');
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : this.language.translate('error.save'));
+    }
+  }
+
+  async deleteList(list: ShoppingList): Promise<void> {
+    if (list.status !== 'open' || list.role !== 'owner' || this.deletingListId() !== null) {
+      return;
+    }
+    const confirmed = window.confirm(this.language.translate('lists.confirmDelete', { title: list.title }));
+    if (!confirmed) {
+      return;
+    }
+    this.error.set('');
+    this.deletingListId.set(list.id);
+    try {
+      await this.api.delete(`/lists/${list.id}`);
+      this.lists.update((lists) => lists?.filter((item) => item.id !== list.id) ?? []);
+      await this.basket.load();
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : this.language.translate('error.save'));
+    } finally {
+      this.deletingListId.set(null);
+    }
   }
 }

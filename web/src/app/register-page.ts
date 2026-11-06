@@ -1,17 +1,19 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Language, TranslatePipe } from './language';
 import { Session } from './session';
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, TranslatePipe],
   templateUrl: './register-page.html',
 })
 export class RegisterPage {
   private session = inject(Session);
   private router = inject(Router);
   private forms = inject(FormBuilder);
+  readonly language = inject(Language);
   readonly error = signal('');
   readonly note = signal('');
   readonly busy = signal(false);
@@ -34,7 +36,7 @@ export class RegisterPage {
       if (created.email_sent) {
         await this.router.navigateByUrl('/');
       } else {
-        this.note.set('Your account is ready. The confirmation email was not sent because this computer has no mail server configured.');
+        this.note.set(this.language.translate('auth.emailNotSent'));
       }
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : 'Registration failed.');

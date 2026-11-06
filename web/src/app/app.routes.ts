@@ -1,9 +1,9 @@
 import { Routes } from '@angular/router';
-import { signedIn } from './session';
+import { signedIn, signedOut } from './session';
 
 export const routes: Routes = [
-  { path: 'login', loadComponent: () => import('./login-page').then((m) => m.LoginPage) },
-  { path: 'register', loadComponent: () => import('./register-page').then((m) => m.RegisterPage) },
+  { path: 'login', canActivate: [signedOut], loadComponent: () => import('./login-page').then((m) => m.LoginPage) },
+  { path: 'register', canActivate: [signedOut], loadComponent: () => import('./register-page').then((m) => m.RegisterPage) },
   {
     path: '',
     canActivate: [signedIn],
@@ -14,7 +14,7 @@ export const routes: Routes = [
       { path: 'lists', loadComponent: () => import('./lists-page').then((m) => m.ListsPage) },
       { path: 'history', loadComponent: () => import('./history-page').then((m) => m.HistoryPage) },
       { path: 'lists/:id', loadComponent: () => import('./list-page').then((m) => m.ListPage) },
-      { path: 'notices', redirectTo: '', pathMatch: 'full' },
+      { path: 'notices', loadComponent: () => import('./notices-page').then((m) => m.NoticesPage) },
     ],
   },
 ];

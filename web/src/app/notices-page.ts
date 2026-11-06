@@ -1,19 +1,18 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Api } from './api';
-import { when } from './money';
+import { TranslatePipe, WhenPipe } from './language';
 import { Notice } from './models';
 
 @Component({
   selector: 'app-notices',
-  imports: [RouterLink],
+  imports: [RouterLink, TranslatePipe, WhenPipe],
   templateUrl: './notices-page.html',
 })
 export class NoticesPage {
   private api = inject(Api);
   readonly notices = signal<Notice[] | null>(null);
   readonly error = signal('');
-  readonly when = when;
 
   constructor() {
     void this.load();

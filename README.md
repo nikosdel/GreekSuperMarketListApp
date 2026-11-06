@@ -2,6 +2,10 @@
 
 The catalog comes from [Πόσο Κάνει](https://posokanei.gov.gr/), the public Greek supermarket price observatory. Each product belongs to one supermarket through `product.chain_id`. The chain name is the shop on that site (Χαλκιαδάκης, My Market, Γαλαξίας, Κρητικός, Μασούτης, and the rest). The same item at two shops is two rows.
 
+In the web app, exact normalized product names are grouped into one result with separate supermarket offers. The offer chooser shows each shop and its current pack price; adding a choice keeps the original shop-specific catalog row. Brand, variant, and pack-size differences are not merged.
+
+Category totals count distinct normalized products with current prices, matching the grouped catalog results. Category tiles use representative `image_url` values from those product rows. Category browsing is separate from product searches so navigating categories does not consume the search rate limit.
+
 `category_path` keeps the site's category hierarchy, for example `Τρόφιμα > Πουλερικά, Αλλαντικά > Αλλαντικά > Πάριζα Παριζάκι`. `price` is the pack price. `unit_price` is the comparable amount (€/κιλό, €/λίτρο, or the equivalent the site publishes). `observed_at` is the date that row was updated on the site (Ενημερώθηκε).
 
 The importer waits at least 1.5 seconds between requests and loads Greece only. A new price snapshot is stored when the price, the unit price, or the site's update date changes.
@@ -57,11 +61,15 @@ Register with `POST /users`. Log in with `POST /oauth/token` using `grant_type=p
 
 Any member can add, change, or remove products on an open list. The other members get a row in `list_notification` and, if they are connected to `GET /notifications/stream`, the same event immediately. `POST /notifications/ticket` gives a 30-second single-use ticket for a browser stream. This is an in-app notice. Phone push waits until the app has a device.
 
+The list owner can remove other members from an open list. Editors cannot remove members, and owners cannot remove themselves.
+
 A password is a bcrypt hash written by the backend. The database only checks that the stored value looks like a bcrypt hash.
 
 An open list has an invite code. A saved list has no invite code, and it has `saved_at` and `saved_by`. The next shared list is a new row.
 
-A list line points at a catalog product. History keeps the short product name and the saved price. It does not copy product descriptions or images.
+Only the owner can delete an open list. Saved lists remain in History and cannot be removed.
+
+A list line points at a catalog product. The UI can display the catalog image URL without copying the image onto the list line. History keeps the short product name and saved price; it does not copy product descriptions or images.
 
 ## Load the catalog
 

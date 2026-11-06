@@ -2,14 +2,13 @@ import { Component, DestroyRef, ElementRef, HostListener, inject, signal, viewCh
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { Api } from './api';
-import { Basket } from './basket';
-import { when } from './money';
+import { Language, TranslatePipe, WhenPipe } from './language';
 import { Notice } from './models';
 import { Session } from './session';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TranslatePipe, WhenPipe],
   templateUrl: './shell.html',
 })
 export class Shell {
@@ -17,25 +16,18 @@ export class Shell {
   private router = inject(Router);
   private api = inject(Api);
   private bellRoot = viewChild<ElementRef<HTMLElement>>('bellRoot');
-  private basket = inject(Basket);
+  private languageService = inject(Language);
   readonly account = this.session.account;
-  readonly openLists = this.basket.lists;
-  readonly activeId = this.basket.activeId;
-  readonly menuOpen = signal(false);
+  readonly language = this.languageService;
   readonly bellOpen = signal(false);
   readonly notices = signal<Notice[]>([]);
   readonly unread = signal(0);
-  readonly section = signal('Dashboard');
-  readonly places = signal<Place[]>([{ label: 'Dashboard', commands: ['/'], query: {} }]);
-  readonly when = when;
+  readonly noticeError = signal('');
 
   constructor() {
-    this.followRoute(this.router.url);
-    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event) => {
-      this.followRoute(event.urlAfterRedirects);
-      this.menuOpen.set(false);
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
+      this.bellOpen.set(false);
     });
-    void this.basket.load().catch(() => undefined);
     void this.loadNotices();
     const timer = setInterval(() => void this.loadNotices(), 30000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
@@ -50,10 +42,6 @@ export class Shell {
     this.bellOpen.set(false);
   }
 
-  toggleMenu(): void {
-    this.menuOpen.update((open) => !open);
-  }
-
   toggleBell(event: Event): void {
     event.stopPropagation();
     this.bellOpen.update((open) => !open);
@@ -64,81 +52,31 @@ export class Shell {
       const body = await this.api.get<{ notifications: Notice[]; unread_count: number }>('/notifications');
       this.notices.set(body.notifications);
       this.unread.set(body.unread_count);
-    } catch {
-      this.unread.set(0);
+      this.noticeError.set('');
+    } catch (error) {
+      this.noticeError.set(error instanceof Error ? error.message : this.language.translate('notices.error'));
     }
   }
 
   async openNotice(notice: Notice): Promise<void> {
-    this.bellOpen.set(false);
     if (!notice.read_at) {
-      await this.api.post(`/notifications/${notice.id}/read`).catch(() => undefined);
-      this.unread.update((count) => Math.max(0, count - 1));
-      this.notices.update((rows) => rows.map((row) => row.id === notice.id ? { ...row, read_at: new Date().toISOString() } : row));
+      try {
+        await this.api.post(`/notifications/${notice.id}/read`);
+        this.unread.update((count) => Math.max(0, count - 1));
+        this.notices.update((rows) => rows.map((row) =>
+          row.id === notice.id ? { ...row, read_at: new Date().toISOString() } : row,
+        ));
+      } catch (error) {
+        this.noticeError.set(error instanceof Error ? error.message : this.language.translate('error.save'));
+        return;
+      }
     }
+    this.bellOpen.set(false);
     await this.router.navigate(['/lists', notice.list_id]);
-  }
-
-  chooseList(raw: string): void {
-    const id = Number(raw);
-    if (Number.isSafeInteger(id) && id > 0) {
-      this.basket.choose(id);
-    }
-  }
-
-  cartLink(): string[] {
-    const id = this.activeId();
-    return id ? ['/lists', String(id)] : ['/lists'];
   }
 
   async logout(): Promise<void> {
     await this.session.logout();
     await this.router.navigateByUrl('/login');
   }
-
-  private followRoute(url: string): void {
-    const bare = url.split('#')[0];
-    const path = bare.split('?')[0];
-    const params = new URLSearchParams(bare.includes('?') ? bare.slice(bare.indexOf('?') + 1) : '');
-    const home: Place = { label: 'Dashboard', commands: ['/'], query: {} };
-    if (path.startsWith('/history')) {
-      this.section.set('History');
-      this.places.set([home, { label: 'History', commands: ['/history'], query: {} }]);
-    } else if (/^\/lists\/\d+/.test(path)) {
-      this.section.set('Shopping list');
-      this.places.set([
-        home,
-        { label: 'Lists', commands: ['/lists'], query: {} },
-        { label: 'Shopping list', commands: [path], query: {} },
-      ]);
-    } else if (path.startsWith('/lists')) {
-      this.section.set('Lists');
-      this.places.set([home, { label: 'Lists', commands: ['/lists'], query: {} }]);
-    } else if (path.startsWith('/catalog')) {
-      const shelf = params.get('path') || '';
-      const crumbs = shelf ? shelf.split(' > ').filter(Boolean) : [];
-      const places: Place[] = [home, { label: 'Categories', commands: ['/catalog'], query: {} }];
-      crumbs.forEach((name, index) => {
-        places.push({
-          label: name,
-          commands: ['/catalog'],
-          query: { path: crumbs.slice(0, index + 1).join(' > ') },
-        });
-      });
-      if (!crumbs.length && (params.get('q') || params.get('chain'))) {
-        places.push({ label: 'Products', commands: ['/catalog'], query: Object.fromEntries(params.entries()) });
-      }
-      this.places.set(places);
-      this.section.set(crumbs.at(-1) || (places.at(-1)?.label ?? 'Categories'));
-    } else {
-      this.section.set('Dashboard');
-      this.places.set([home]);
-    }
-  }
-}
-
-interface Place {
-  label: string;
-  commands: string[];
-  query: Record<string, string>;
 }

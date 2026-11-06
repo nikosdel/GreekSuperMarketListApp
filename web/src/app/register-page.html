@@ -1,42 +1,50 @@
-<div class="stage">
+<div class="auth-stage">
   <section class="auth-layout">
+    <button class="auth-language" type="button" [attr.aria-label]="'lang.switch' | t" (click)="language.toggle()">
+      {{ language.code() === 'el' ? 'EN' : 'ΕΛ' }}
+    </button>
     <div class="auth-brand">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 24 24">
-          <path d="M6 6h15l-1.6 8.2a1 1 0 0 1-1 .8H9.2a1 1 0 0 1-1-.8L6 6Z" />
-          <path d="M6 6 5 3.5H3" />
-          <circle cx="9" cy="19" r="1.3" />
-          <circle cx="17" cy="19" r="1.3" />
+          <path d="M7 4.5h12v15H7zM4 7.5h3M4 11h3M4 14.5h3M10 8.5h6M10 12h6M10 15.5h4" />
         </svg>
       </span>
-      <p class="brand-title">Lists</p>
-      <p>Compare a price, then share the list with someone else.</p>
+      <p class="brand-title">Super Market List</p>
+      <p>{{ 'brand.tagline' | t }}</p>
     </div>
-  <section class="auth">
-    <h1>Register</h1>
-    <p class="lead">Creating an account sends a confirmation to this email. The password needs at least 10 characters.</p>
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <label>
-        Name
-        <input type="text" formControlName="display_name" autocomplete="nickname" />
-      </label>
-      <label>
-        Email
-        <input type="email" formControlName="email" autocomplete="username" />
-      </label>
-      <label>
-        Password
-        <input type="password" formControlName="password" autocomplete="new-password" />
-      </label>
-      @if (error()) {
-        <p class="error">{{ error() }}</p>
-      }
-      @if (note()) {
-        <p class="note">{{ note() }} <a routerLink="/">Continue</a></p>
-      }
-      <button class="primary" type="submit" [disabled]="busy()">Create account</button>
-    </form>
-    <p class="aside">Already registered. <a routerLink="/login">Log in</a></p>
-  </section>
+    <section class="auth-panel">
+      <h1>{{ 'auth.register' | t }}</h1>
+      <p class="lead">{{ 'auth.registerLead' | t }}</p>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <label>
+          {{ 'auth.name' | t }}
+          <input type="text" formControlName="display_name" autocomplete="nickname" />
+        </label>
+        <label>
+          {{ 'auth.email' | t }}
+          <input type="email" formControlName="email" autocomplete="username" />
+        </label>
+        <label>
+          {{ 'auth.password' | t }}
+          <input
+            type="password"
+            formControlName="password"
+            autocomplete="new-password"
+            aria-describedby="password-hint"
+          />
+          <span class="field-hint" id="password-hint">{{ 'auth.passwordHint' | t }}</span>
+        </label>
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        @if (note()) {
+          <p class="notice-line" role="status">{{ note() }} <a routerLink="/">{{ 'nav.home' | t }}</a></p>
+        }
+        <button class="primary" type="submit" [disabled]="busy()">
+          {{ busy() ? ('common.loading' | t) : ('auth.createAccount' | t) }}
+        </button>
+      </form>
+      <p class="aside">{{ 'auth.hasAccount' | t }} <a routerLink="/login">{{ 'auth.loginLink' | t }}</a></p>
+    </section>
   </section>
 </div>

@@ -1,53 +1,72 @@
 <header class="page-head">
   <div>
-    <h1>Lists</h1>
-    <p class="lead">An open list stays shared. Everyone on it can add, change, and remove products until someone saves it.</p>
+    <h1>{{ 'lists.title' | t }}</h1>
+    <p class="lead">{{ 'lists.lead' | t }}</p>
   </div>
 </header>
 
 @if (error()) {
-  <p class="error">{{ error() }}</p>
+  <p class="error" role="alert">{{ error() }}</p>
 }
 @if (copied()) {
-  <p class="note">Invite code copied.</p>
+  <p class="notice-line" role="status">{{ 'lists.copySuccess' | t }}</p>
 }
 
-<section class="list-tools">
-  <form [formGroup]="form" (ngSubmit)="create()">
+<section class="list-tools" aria-label="List actions">
+  <form class="inline-form" [formGroup]="form" (ngSubmit)="create()">
     <label>
-      New list
-      <input type="text" formControlName="title" placeholder="Weekly shop" />
+      {{ 'lists.titleLabel' | t }}
+      <input type="text" formControlName="title" [placeholder]="'lists.titlePlaceholder' | t" />
     </label>
-    <button class="primary" type="submit">Create</button>
+    <button class="primary" type="submit">{{ 'action.create' | t }}</button>
   </form>
-  <form [formGroup]="form" (ngSubmit)="join()">
+  <form class="inline-form" [formGroup]="form" (ngSubmit)="join()">
     <label>
-      Join with a code
-      <input type="text" formControlName="invite_code" autocomplete="off" placeholder="Invite code" />
+      {{ 'lists.inviteLabel' | t }}
+      <input type="text" formControlName="invite_code" autocomplete="off" />
     </label>
-    <button class="secondary" type="submit">Join</button>
+    <button class="secondary" type="submit">{{ 'action.join' | t }}</button>
   </form>
 </section>
 
 @if (lists() === null) {
-  <p class="muted">Loading lists.</p>
+  <p class="empty-state">{{ 'lists.loading' | t }}</p>
 } @else if (openLists().length === 0) {
-  <p class="sheet empty">No open lists yet. Create one above, or join with a code from someone else.</p>
+  <p class="empty-state">{{ 'lists.noLists' | t }}</p>
 } @else {
-  <div class="list-grid">
-    @for (list of openLists(); track list.id) {
-      <article class="list-card">
-        <div class="list-card-top">
-          <h2>{{ list.title }}</h2>
-          <span class="role">{{ list.role }}</span>
-        </div>
-        <p class="muted">{{ list.item_count || 0 }} products · {{ list.member_count || 0 }} people</p>
-        <p class="invite">
-          <span>{{ list.invite_code }}</span>
-          <button class="text" type="button" (click)="copy(list.invite_code || '')">Copy</button>
-        </p>
-        <a class="primary" [routerLink]="['/lists', list.id]">Open list</a>
-      </article>
-    }
-  </div>
+  <section class="content-section">
+    <header class="section-heading">
+      <h2>{{ 'home.openLists' | t }}</h2>
+      <span class="section-count">{{ openLists().length }}</span>
+    </header>
+    <div class="record-list">
+      @for (list of openLists(); track list.id) {
+        <article class="record-row list-record">
+          <a class="record-main" [routerLink]="['/lists', list.id]">
+            <strong>{{ list.title }}</strong>
+            <span class="muted">
+              {{ (list.role === 'owner' ? 'common.owner' : 'common.editor') | t }}
+              ·
+              {{ (list.item_count === 1 ? 'common.product' : 'common.products') | t: { count: list.item_count ?? 0 } }}
+              ·
+              {{ (list.member_count === 1 ? 'common.peopleOne' : 'common.people') | t: { count: list.member_count ?? 0 } }}
+            </span>
+          </a>
+          <p class="invite-code">
+            <span>{{ list.invite_code }}</span>
+            <button class="text-link" type="button" (click)="copy(list.invite_code || '')">{{ 'action.copy' | t }}</button>
+          </p>
+          @if (list.status === 'open' && list.role === 'owner') {
+            <button
+              class="text-link destructive-link delete-list"
+              type="button"
+              [disabled]="deletingListId() !== null"
+              (click)="deleteList(list)"
+            >{{ 'action.delete' | t }}</button>
+          }
+          <a class="row-arrow" [routerLink]="['/lists', list.id]" [attr.aria-label]="'action.open' | t">→</a>
+        </article>
+      }
+    </div>
+  </section>
 }

@@ -1,23 +1,37 @@
-<h1>Notices</h1>
-<p class="lead">These are changes other people made on lists you share. Your own edits are not listed here.</p>
+<header class="page-head">
+  <div>
+    <h1>{{ 'notices.title' | t }}</h1>
+    <p class="lead">{{ 'notices.lead' | t }}</p>
+  </div>
+</header>
 
 @if (error()) {
-  <p class="error">{{ error() }}</p>
+  <p class="error" role="alert">{{ error() }}</p>
 }
 
 @if (notices() === null) {
-  <p class="muted">Loading notices.</p>
+  <p class="empty-state">{{ 'notices.loading' | t }}</p>
 } @else if (notices()!.length === 0) {
-  <p class="sheet empty">No notices yet. They show up when someone else changes a list you share.</p>
+  <section class="content-section">
+    <header class="section-heading"><h2>{{ 'notices.title' | t }}</h2></header>
+    <p class="empty-state">{{ 'notices.empty' | t }}</p>
+  </section>
 } @else {
-  <ul class="sheet">
-    @for (notice of notices(); track notice.id) {
-      <li>
-        <a class="row" [class.unread]="!notice.read_at" [routerLink]="['/lists', notice.list_id]" (click)="markRead(notice)">
-          <span>{{ notice.message }}</span>
-          <span class="muted">{{ when(notice.created_at) }}</span>
+  <section class="content-section">
+    <header class="section-heading">
+      <h2>{{ 'notices.title' | t }}</h2>
+      <span class="section-count">{{ notices()!.length }}</span>
+    </header>
+    <div class="record-list notice-list">
+      @for (notice of notices(); track notice.id) {
+        <a class="record-row notice-record" [class.unread]="!notice.read_at" [routerLink]="['/lists', notice.list_id]" (click)="markRead(notice)">
+          <span class="record-main">
+            <strong>{{ notice.message }}</strong>
+            <span class="muted">{{ notice.created_at | when }}</span>
+          </span>
+          <span class="row-arrow" aria-hidden="true">→</span>
         </a>
-      </li>
-    }
-  </ul>
+      }
+    </div>
+  </section>
 }

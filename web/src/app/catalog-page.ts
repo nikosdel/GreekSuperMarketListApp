@@ -12,6 +12,7 @@ interface CategoryChoice {
   name: string;
   image_url: string | null;
   products: number;
+  path?: string;
 }
 
 interface BasketStoreGroup {
@@ -33,8 +34,10 @@ export class CatalogPage {
   private forms = inject(FormBuilder);
   private basket = inject(Basket);
   private language = inject(Language);
-  readonly path = signal('');
   readonly categories = signal<CategoryChoice[]>([]);
+  readonly subcategories = signal<CategoryChoice[]>([]);
+  readonly selectedCategories = signal<string[]>([]);
+  readonly selectedSubcategories = signal<string[]>([]);
   readonly products = signal<CatalogProductGroup[] | null>(null);
   readonly total = signal(0);
   readonly chains = signal<CatalogChain[]>([]);
@@ -100,58 +103,81 @@ export class CatalogPage {
     void this.loadChains();
     void this.loadOpenLists();
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const path = params.get('path') || '';
-      this.path.set(path);
+      const legacyPath = params.get('path') || '';
+      const legacyParts = legacyPath ? legacyPath.split(' > ') : [];
+      const categories = params.getAll('category');
+      const subcategories = params.getAll('subcategory');
+      const selectedSubcategories = subcategories.length
+        ? subcategories
+        : legacyParts.length > 1 ? [legacyParts.join(' > ')] : [];
+      this.selectedCategories.set(
+        categories.length
+          ? categories
+          : legacyParts.length ? legacyParts.slice(0, 1) : selectedSubcategories.map((path) => path.split(' > ')[0]),
+      );
+      this.selectedSubcategories.set(selectedSubcategories);
       this.form.patchValue({
         q: params.get('q') || '',
         chain: params.get('chain') || '',
         sort: params.get('sort') === 'name' ? 'name' : 'price',
         offset: Number(params.get('offset') || 0),
       }, { emitEvent: false });
-      void this.load(path);
+      void this.load();
     });
   }
 
-  crumbs(): string[] {
-    return this.path() ? this.path().split(' > ') : [];
-  }
-
-  parentQuery(): { path?: string } {
-    const crumbs = this.crumbs();
-    if (crumbs.length <= 1) {
-      return {};
-    }
-    return { path: crumbs.slice(0, -1).join(' > ') };
-  }
-
   heading(): string {
-    if (this.path()) {
-      return this.crumbs().at(-1) || this.language.translate('catalog.categories');
-    }
     const value = this.form.getRawValue();
-    return value.q.trim() || value.chain
+    return value.q.trim() || value.chain || this.selectedCategories().length || this.selectedSubcategories().length
       ? this.language.translate('catalog.results')
-      : this.language.translate('catalog.categories');
+      : this.language.translate('catalog.title');
   }
 
-  showCategoryChoices(): boolean {
-    const value = this.form.getRawValue();
-    return Boolean(this.path()) || (!value.q.trim() && !value.chain);
+  subcategoryName(path: string): string {
+    return path.split(' > ').at(-1) || path;
   }
 
-  shelfQuery(name: string): { path: string } {
-    return { path: this.categoryPath(name) };
+  toggleCategory(category: string, checked: boolean): void {
+    const selected = this.selectedCategories();
+    const next = checked
+      ? [...selected, category]
+      : selected.filter((item) => item !== category);
+    this.selectedCategories.set(next);
+    this.selectedSubcategories.update((paths) =>
+      paths.filter((path) => next.some((parent) => path.startsWith(`${parent} > `))),
+    );
+    void this.applyFilters();
   }
 
-  categoryPath(name: string): string {
-    return this.path() ? `${this.path()} > ${name}` : name;
+  toggleSubcategory(path: string, checked: boolean): void {
+    const selected = this.selectedSubcategories();
+    this.selectedSubcategories.set(
+      checked ? [...selected, path] : selected.filter((item) => item !== path),
+    );
+    void this.applyFilters();
   }
 
-  selectCategory(event: Event): void {
-    const target = event.target;
-    if (target instanceof HTMLSelectElement && target.value !== this.path()) {
-      void this.show({ path: target.value, offset: 0 });
-    }
+  removeCategoryFilter(category: string): void {
+    this.selectedCategories.update((items) => items.filter((item) => item !== category));
+    this.selectedSubcategories.update((paths) =>
+      paths.filter((path) => !path.startsWith(`${category} > `)),
+    );
+    void this.applyFilters();
+  }
+
+  removeSubcategoryFilter(path: string): void {
+    this.selectedSubcategories.update((items) => items.filter((item) => item !== path));
+    void this.applyFilters();
+  }
+
+  removeShopFilter(): void {
+    this.form.controls.chain.setValue('');
+    void this.applyFilters();
+  }
+
+  removeSearchFilter(): void {
+    this.form.controls.q.setValue('');
+    void this.applyFilters();
   }
 
   activeList() {
@@ -279,11 +305,13 @@ export class CatalogPage {
     this.selectedOfferId.set(offer.id);
   }
 
-  async show(change: { path?: string; offset?: number }): Promise<void> {
+  async show(change: { offset?: number } = {}): Promise<void> {
     const value = this.form.getRawValue();
     await this.router.navigate(['/catalog'], {
       queryParams: {
-        path: change.path === undefined ? this.path() : change.path,
+        path: null,
+        category: this.selectedCategories().length ? this.selectedCategories() : null,
+        subcategory: this.selectedSubcategories().length ? this.selectedSubcategories() : null,
         q: value.q.trim(),
         chain: value.chain,
         sort: value.sort,
@@ -375,6 +403,7 @@ export class CatalogPage {
   pickShop(name: string): void {
     this.form.controls.chain.setValue(name);
     this.shopsOpen.set(false);
+    void this.applyFilters();
   }
 
   @HostListener('document:click')
@@ -391,20 +420,20 @@ export class CatalogPage {
     }
   }
 
-  private async load(path: string): Promise<void> {
+  private async load(): Promise<void> {
     const ticket = ++this.loadTicket;
     this.loading.set(true);
     this.error.set('');
     const value = this.form.getRawValue();
     const query = value.q.trim();
-    const browsing = !query && !value.chain;
     this.categories.set([]);
+    this.subcategories.set([]);
     this.products.set(null);
     this.total.set(0);
     try {
       const categoriesBody = await this.api.get<{
         categories: Array<{ name: string; image_url?: string | null; products: number }>;
-      }>(`/catalog/categories?path=${encodeURIComponent(path)}`);
+      }>('/catalog/categories');
       if (ticket !== this.loadTicket) {
         return;
       }
@@ -412,17 +441,36 @@ export class CatalogPage {
         ...category,
         image_url: category.image_url ?? null,
       })));
-      if (browsing && !path) {
-        return;
+      const selectedCategories = this.selectedCategories();
+      if (selectedCategories.length) {
+        const subcategoryResults = await Promise.all(selectedCategories.map(async (category) => {
+          const response = await this.api.get<{ categories: CategoryChoice[] }>(
+            `/catalog/categories?path=${encodeURIComponent(category)}`,
+          );
+          return response.categories.map((subcategory) => ({
+            ...subcategory,
+            image_url: subcategory.image_url ?? null,
+            path: `${category} > ${subcategory.name}`,
+          }));
+        }));
+        if (ticket !== this.loadTicket) {
+          return;
+        }
+        this.subcategories.set(subcategoryResults.flat());
       }
       const params = new URLSearchParams({
-        path,
         q: query,
         chain: value.chain,
         sort: value.sort,
         offset: String(value.offset || 0),
         limit: String(this.limit),
       });
+      for (const category of selectedCategories) {
+        params.append('category', category);
+      }
+      for (const subcategory of this.selectedSubcategories()) {
+        params.append('subcategory', subcategory);
+      }
       const body = await this.api.get<{ products: unknown[]; total?: number }>(
         `/catalog/products?${params}`,
       );

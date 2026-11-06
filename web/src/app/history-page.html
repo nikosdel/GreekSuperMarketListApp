@@ -1,27 +1,42 @@
 <header class="page-head">
   <div>
-    <h1>History</h1>
-    <p class="lead">Saved lists keep the prices from the moment they were saved. They stay locked.</p>
+    <h1>{{ 'history.title' | t }}</h1>
+    <p class="lead">{{ 'history.lead' | t }}</p>
   </div>
 </header>
 
 @if (error()) {
-  <p class="error">{{ error() }}</p>
+  <p class="error" role="alert">{{ error() }}</p>
 }
 
 @if (lists() === null) {
-  <p class="muted">Loading history.</p>
+  <p class="empty-state">{{ 'common.loading' | t }}</p>
 } @else if (saved().length === 0) {
-  <p class="sheet empty">No saved lists yet. Saving a list keeps it here.</p>
+  <section class="content-section">
+    <header class="section-heading"><h2>{{ 'history.title' | t }}</h2></header>
+    <p class="empty-state">{{ 'history.empty' | t }}</p>
+  </section>
 } @else {
-  <div class="list-grid">
-    @for (list of saved(); track list.id) {
-      <article class="list-card">
-        <h2>{{ list.title }}</h2>
-        <p class="muted">Saved by {{ list.saved_by_name || 'a member' }}</p>
-        <p class="muted">{{ when(list.saved_at) }} · {{ list.item_count || 0 }} products</p>
-        <a class="primary" [routerLink]="['/lists', list.id]">Open list</a>
-      </article>
-    }
-  </div>
+  <section class="content-section">
+    <header class="section-heading">
+      <h2>{{ 'history.title' | t }}</h2>
+      <span class="section-count">{{ saved().length }}</span>
+    </header>
+    <div class="record-list">
+      @for (list of saved(); track list.id) {
+        <a class="record-row" [routerLink]="['/lists', list.id]">
+          <span class="record-main">
+            <strong>{{ list.title }}</strong>
+            <span class="muted">
+              {{ 'history.savedBy' | t: { name: list.saved_by_name || ('common.someone' | t) } }}
+              ·
+              {{ (list.item_count === 1 ? 'common.product' : 'common.products') | t: { count: list.item_count ?? 0 } }}
+            </span>
+          </span>
+          <span class="record-meta">{{ list.saved_at | when }}</span>
+          <span class="row-arrow" aria-hidden="true">→</span>
+        </a>
+      }
+    </div>
+  </section>
 }

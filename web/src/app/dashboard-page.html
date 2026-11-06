@@ -1,153 +1,88 @@
-<header class="page-head title-row">
+<header class="page-head">
   <div>
-    <h1>{{ activeList()?.title || 'Shop' }}</h1>
-    <p class="lead">
-      @if (activeList(); as list) {
-        {{ list.item_count || 0 }} products on this list
-        @if (listTotal() !== null) {
-          · {{ euro(listTotal()) }}
-        }
-      } @else {
-        Create a list, then open a shelf. A shelf opens its products.
-      }
-    </p>
+    <h1>{{ 'home.title' | t }}</h1>
+    <p class="lead">{{ 'home.lead' | t }}</p>
   </div>
-  @if (activeList(); as list) {
-    <a class="primary" [routerLink]="['/lists', list.id]">Open list</a>
-  } @else {
-    <a class="primary" routerLink="/lists">Create a list</a>
-  }
+  <div class="page-actions">
+    <a class="secondary" routerLink="/catalog">{{ 'home.browse' | t }}</a>
+    <a class="primary" routerLink="/lists">{{ 'action.createList' | t }}</a>
+  </div>
 </header>
 
 @if (error()) {
-  <p class="error">{{ error() }}</p>
+  <p class="error" role="alert">{{ error() }}</p>
 }
 
-<div class="home-top">
-  <section class="panel">
-    <header class="panel-head">
-      <div>
-        <h2>Shelves</h2>
-        <p class="muted">Open a shelf to see its products.</p>
-      </div>
-      <a routerLink="/catalog">All categories</a>
-    </header>
-    <div class="panel-body">
-      @if (!categories().length) {
-        <p class="empty">Categories are still loading.</p>
-      } @else {
-        <div class="choices">
-          @for (category of categories(); track category.name) {
-            <a class="choice" [routerLink]="['/catalog']" [queryParams]="{ path: category.name }">
-              <img [src]="picture(category.name)" alt="" />
-              <span class="choice-copy">
-                <strong>{{ category.name }}</strong>
-                <span class="muted">{{ category.products }} products</span>
-                <span class="go">Open products</span>
-              </span>
-            </a>
-          }
+@if (lists() === null) {
+  <p class="empty-state">{{ 'home.loading' | t }}</p>
+} @else {
+  <div class="overview-grid">
+    <section class="content-section">
+      <header class="section-heading">
+        <div>
+          <h2>{{ 'home.openLists' | t }}</h2>
+          <p class="muted">{{ 'home.openLead' | t }}</p>
         </div>
-      }
-    </div>
-  </section>
-
-  <section class="panel">
-    <header class="panel-head">
-      <div>
-        <h2>This list</h2>
-        <p class="muted">{{ activeList()?.title || 'No open list yet' }}</p>
-      </div>
-      @if (activeList(); as list) {
-        <a class="secondary" [routerLink]="['/lists', list.id]">Open</a>
-      }
-    </header>
-    <div class="panel-body">
-      @if (!activeList()) {
-        <p class="empty">Create a list before adding products.</p>
-        <a class="primary" routerLink="/lists">Go to lists</a>
-      } @else if (!preview().length) {
-        <p class="empty">Nothing on this list yet. Open a shelf and add a product.</p>
+        <span class="section-count">{{ openLists().length }}</span>
+      </header>
+      @if (openLists().length === 0) {
+        <p class="empty-state">{{ 'home.noOpen' | t }}</p>
       } @else {
-        <div class="basket-lines">
-          @for (item of preview(); track item.id) {
-            <div class="basket-line">
-              @if (item.image_url) {
-                <img class="thumb" [src]="item.image_url" [alt]="item.product_name" />
-              } @else {
-                <span class="thumb"></span>
-              }
-              <span class="name">
-                <strong>{{ item.product_name }}</strong>
-                <span class="muted">{{ item.chain_name }}</span>
-              </span>
-              <span class="price">{{ euro(item.current_price) }}</span>
-            </div>
-          }
-        </div>
-        @if (moreCount()) {
-          <p class="muted more">{{ moreCount() }} more on the list.</p>
-        }
-        <p class="total-line"><span>Total</span> <strong class="price">{{ euro(listTotal()) }}</strong></p>
-      }
-    </div>
-  </section>
-</div>
-
-<div class="dash-lower">
-  <section class="panel">
-    <header class="panel-head">
-      <div>
-        <h2>Open lists</h2>
-        <p class="muted">Each list opens on its own page.</p>
-      </div>
-      <a routerLink="/lists">New list</a>
-    </header>
-    <div class="panel-body">
-      @if (allLists() === null) {
-        <p class="muted">Loading lists.</p>
-      } @else if (!openLists().length) {
-        <p class="empty">No open lists yet.</p>
-      } @else {
-        <div class="list-grid">
+        <div class="record-list">
           @for (list of openLists(); track list.id) {
-            <a class="list-card" [class.current]="list.id === activeId()" [routerLink]="['/lists', list.id]">
-              <div class="list-card-top">
-                <h2>{{ list.title }}</h2>
-                <span class="role">{{ list.id === activeId() ? 'Shopping now' : list.role }}</span>
-              </div>
-              <p class="muted">{{ list.item_count || 0 }} products · {{ list.member_count || 0 }} people</p>
+            <a class="record-row" [routerLink]="['/lists', list.id]">
+              <span class="record-main">
+                <strong>{{ list.title }}</strong>
+                <span class="muted">
+                  {{ (list.role === 'owner' ? 'common.owner' : 'common.editor') | t }}
+                  ·
+                  {{ (list.item_count === 1 ? 'common.product' : 'common.products') | t: { count: list.item_count ?? 0 } }}
+                </span>
+              </span>
+              <span class="record-meta">
+                <span>{{ 'common.open' | t }}</span>
+                <span class="muted">{{ (list.member_count === 1 ? 'common.peopleOne' : 'common.people') | t: { count: list.member_count ?? 0 } }}</span>
+              </span>
+              <span class="row-arrow" aria-hidden="true">→</span>
             </a>
           }
         </div>
       }
-    </div>
-  </section>
+    </section>
 
-  <section class="panel">
-    <header class="panel-head">
-      <div>
-        <h2>History</h2>
-        <p class="muted">Saved lists stay locked.</p>
-      </div>
-      <a routerLink="/history">All history</a>
-    </header>
-    <div class="panel-body">
-      @if (allLists() === null) {
-        <p class="muted">Loading history.</p>
-      } @else if (!savedLists().length) {
-        <p class="empty">No saved lists yet.</p>
+    <section class="content-section">
+      <header class="section-heading">
+        <div>
+          <h2>{{ 'home.savedLists' | t }}</h2>
+          <p class="muted">{{ 'home.savedLead' | t }}</p>
+        </div>
+        @if (savedLists().length) {
+          <a class="text-link" routerLink="/history">{{ 'action.showAll' | t }}</a>
+        }
+      </header>
+      @if (savedLists().length === 0) {
+        <p class="empty-state">{{ 'home.noSaved' | t }}</p>
       } @else {
-        <div class="list-grid">
-          @for (list of savedLists().slice(0, 4); track list.id) {
-            <a class="list-card" [routerLink]="['/lists', list.id]">
-              <h2>{{ list.title }}</h2>
-              <p class="muted">Saved by {{ list.saved_by_name || 'a member' }}</p>
-              <p class="muted">{{ when(list.saved_at) }} · {{ list.item_count || 0 }} products</p>
+        <div class="record-list">
+          @for (list of savedLists().slice(0, 5); track list.id) {
+            <a class="record-row" [routerLink]="['/lists', list.id]">
+              <span class="record-main">
+                <strong>{{ list.title }}</strong>
+                <span class="muted">
+                  {{ (list.item_count === 1 ? 'common.product' : 'common.products') | t: { count: list.item_count ?? 0 } }}
+                  ·
+                  {{ 'history.savedBy' | t: { name: list.saved_by_name || ('common.someone' | t) } }}
+                </span>
+              </span>
+              <span class="record-meta">
+                <span>{{ 'common.saved' | t }}</span>
+                <span class="muted">{{ list.saved_at | when }}</span>
+              </span>
+              <span class="row-arrow" aria-hidden="true">→</span>
             </a>
           }
         </div>
       }
-    </div>
-  </section>
-</div>
+    </section>
+  </div>
+}

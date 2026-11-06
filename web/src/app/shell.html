@@ -1,100 +1,82 @@
-<div class="app">
-  <button type="button" class="scrim" [class.open]="menuOpen()" aria-label="Close menu" (click)="menuOpen.set(false)"></button>
-  <aside class="sidebar bg-ground text-ink" [class.open]="menuOpen()">
-    <a class="mark" routerLink="/" (click)="menuOpen.set(false)">
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/" aria-label="Super Market List">
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M6 5.5h12M6 5.5v14M6 10h12M6 14.5h8" />
+        <path d="M7 4.5h12v15H7zM4 7.5h3M4 11h3M4 14.5h3M10 8.5h6M10 12h6M10 15.5h4" />
       </svg>
-      <span>Lists</span>
+      <span>Super Market List</span>
     </a>
-    <nav>
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }" (click)="menuOpen.set(false)">
-        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v6H4zM4 14h7v6H4zM13 14h7v6h-7z" /></svg>
-        Dashboard
-      </a>
-      <a routerLink="/catalog" routerLinkActive="active" (click)="menuOpen.set(false)">
-        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" /></svg>
-        Categories
-      </a>
-      <a routerLink="/lists" routerLinkActive="active" [routerLinkActiveOptions]="{ paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }" (click)="menuOpen.set(false)">
-        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h15l-1.6 8.2a1 1 0 0 1-1 .8H9.2a1 1 0 0 1-1-.8L6 6Z" /><path d="M6 6 5 3.5H3" /><circle cx="9" cy="19" r="1.3" /><circle cx="17" cy="19" r="1.3" /></svg>
-        Lists
-      </a>
-      <a routerLink="/history" routerLinkActive="active" (click)="menuOpen.set(false)">
-        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" /><path d="M12 8v5l3 2" /></svg>
-        History
-      </a>
+
+    <nav class="desktop-nav" [attr.aria-label]="'nav.menu' | t">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ 'nav.home' | t }}</a>
+      <a routerLink="/catalog" routerLinkActive="active">{{ 'nav.catalog' | t }}</a>
+      <a routerLink="/lists" routerLinkActive="active">{{ 'nav.lists' | t }}</a>
+      <a routerLink="/history" routerLinkActive="active">{{ 'nav.history' | t }}</a>
     </nav>
-    <div class="sidebar-foot">
-      <span class="who">{{ account()?.display_name }}</span>
-      <button class="text" type="button" (click)="logout()">Log out</button>
-    </div>
-  </aside>
-  <div class="workspace">
-    <header class="topbar bg-green">
-      <button class="text menu-button" type="button" (click)="toggleMenu()">Menu</button>
-      <nav class="place flex min-w-0 flex-wrap items-center gap-2" aria-label="Where you are">
-        @for (place of places(); track $index; let last = $last) {
-          @if (!last) {
-            <a [routerLink]="place.commands" [queryParams]="place.query">{{ place.label }}</a>
-            <span aria-hidden="true">/</span>
-          } @else {
-            <span aria-current="page">{{ place.label }}</span>
-          }
-        }
-      </nav>
-      <div class="tools">
-      @if (openLists().length) {
-        <label class="active-list">
-          <select aria-label="List you are shopping" [value]="activeId() || ''" (change)="chooseList($any($event.target).value)">
-            @for (list of openLists(); track list.id) {
-              <option [value]="list.id">{{ list.title }}</option>
-            }
-          </select>
-        </label>
-      }
-      <a class="icon-button" [routerLink]="cartLink()" aria-label="Shopping list" (click)="menuOpen.set(false)">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M6 6h15l-1.6 8.2a1 1 0 0 1-1 .8H9.2a1 1 0 0 1-1-.8L6 6Z" />
-          <path d="M6 6 5 3.5H3" />
-          <circle cx="9" cy="19" r="1.3" />
-          <circle cx="17" cy="19" r="1.3" />
-        </svg>
-      </a>
+
+    <div class="header-tools">
+      <button class="language-switch" type="button" [attr.aria-label]="'lang.switch' | t" (click)="language.toggle()">
+        {{ language.code() === 'el' ? 'EN' : 'ΕΛ' }}
+      </button>
       <div class="bell-wrap" #bellRoot>
-        <button class="bell" type="button" aria-label="Notices" (click)="toggleBell($event)">
+        <button class="icon-button" type="button" [attr.aria-label]="'notices.title' | t" [attr.aria-expanded]="bellOpen()" (click)="toggleBell($event)">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15Z" />
-            <path d="M10 18a2 2 0 0 0 4 0" />
+            <path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 18a2 2 0 0 0 4 0" />
           </svg>
           @if (unread() > 0) {
             <span class="badge">{{ unread() > 9 ? '9+' : unread() }}</span>
           }
         </button>
         @if (bellOpen()) {
-          <div class="bell-panel" (click)="$event.stopPropagation()">
-            <p class="panel-title">Notices</p>
-            @if (!notices().length) {
-              <p class="muted">No notices yet.</p>
+          <section class="bell-panel" [attr.aria-label]="'notices.title' | t">
+            <header class="panel-title">
+              <strong>{{ 'notices.title' | t }}</strong>
+              <a class="text-link" routerLink="/notices">{{ 'action.showAll' | t }}</a>
+            </header>
+            @if (noticeError()) {
+              <p class="error">{{ noticeError() }}</p>
+            } @else if (!notices().length) {
+              <p class="empty-state">{{ 'notices.empty' | t }}</p>
             } @else {
               <ul>
-                @for (notice of notices(); track notice.id) {
+                @for (notice of notices().slice(0, 5); track notice.id) {
                   <li>
-                    <button type="button" [class.unread]="!notice.read_at" (click)="openNotice(notice)">
+                    <button class="notice-row" type="button" [class.unread]="!notice.read_at" (click)="openNotice(notice)">
                       <span>{{ notice.message }}</span>
-                      <span class="muted">{{ when(notice.created_at) }}</span>
+                      <span class="muted">{{ notice.created_at | when }}</span>
                     </button>
                   </li>
                 }
               </ul>
             }
-          </div>
+          </section>
         }
       </div>
-      </div>
-    </header>
-    <main class="canvas">
-      <router-outlet />
-    </main>
-  </div>
+      <span class="account-name">{{ account()?.display_name }}</span>
+      <button class="text-link logout-button" type="button" (click)="logout()">{{ 'action.logout' | t }}</button>
+    </div>
+  </header>
+
+  <main class="canvas">
+    <router-outlet />
+  </main>
+
+  <nav class="bottom-nav" [attr.aria-label]="'nav.menu' | t">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 10 8.5-7 8.5 7v10.5h-6v-6h-5v6h-6z" /></svg>
+      <span>{{ 'nav.home' | t }}</span>
+    </a>
+    <a routerLink="/catalog" routerLinkActive="active">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg>
+      <span>{{ 'nav.catalog' | t }}</span>
+    </a>
+    <a routerLink="/lists" routerLinkActive="active">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h12v15H7zM4 7.5h3M4 11h3M4 14.5h3M10 8.5h6M10 12h6M10 15.5h4" /></svg>
+      <span>{{ 'nav.lists' | t }}</span>
+    </a>
+    <a routerLink="/history" routerLinkActive="active">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5M4 4.5v4h4M12 7v5l3 2" /></svg>
+      <span>{{ 'nav.history' | t }}</span>
+    </a>
+  </nav>
 </div>

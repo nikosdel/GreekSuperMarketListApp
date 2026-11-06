@@ -1,7 +1,3 @@
-@if (path()) {
-  <a class="back-link" routerLink="/catalog" [queryParams]="parentQuery()">← {{ 'catalog.back' | t }}</a>
-}
-
 <header class="page-head">
   <div>
     <h1>{{ heading() }}</h1>
@@ -55,19 +51,60 @@
     {{ 'catalog.search' | t }}
     <input type="search" formControlName="q" [placeholder]="'catalog.searchPlaceholder' | t" />
   </label>
-  <label>
-    {{ (path() ? 'catalog.subcategory' : 'catalog.category') | t }}
-    <select [value]="path()" (change)="selectCategory($event)">
-      <option [value]="path()">
-        {{ (path() ? 'catalog.allSubcategories' : 'catalog.allCategories') | t }}
-      </option>
-      @for (category of categories(); track category.name) {
-        <option [value]="categoryPath(category.name)">
-          {{ category.name }} · {{ 'catalog.resultCount' | t: { count: category.products } }}
-        </option>
-      }
-    </select>
-  </label>
+  <div class="multi-filter">
+    <span>{{ 'catalog.category' | t }}</span>
+    <details class="multi-filter-dropdown">
+      <summary>
+        @if (selectedCategories().length) {
+          {{ 'catalog.selectedCount' | t: { count: selectedCategories().length } }}
+        } @else {
+          {{ 'catalog.allCategories' | t }}
+        }
+      </summary>
+      <div class="multi-filter-options">
+        @for (category of categories(); track category.name) {
+          <label>
+            <input
+              type="checkbox"
+              [checked]="selectedCategories().includes(category.name)"
+              (change)="toggleCategory(category.name, $any($event.target).checked)"
+            />
+            <span>{{ category.name }}</span>
+          </label>
+        }
+      </div>
+    </details>
+  </div>
+  @if (selectedCategories().length) {
+    <div class="multi-filter">
+      <span>{{ 'catalog.subcategory' | t }}</span>
+      <details class="multi-filter-dropdown">
+        <summary>
+          @if (selectedSubcategories().length) {
+            {{ 'catalog.selectedCount' | t: { count: selectedSubcategories().length } }}
+          } @else {
+            {{ 'catalog.allSubcategories' | t }}
+          }
+        </summary>
+        <div class="multi-filter-options">
+          @if (subcategories().length) {
+            @for (subcategory of subcategories(); track subcategory.path) {
+              <label>
+                <input
+                  type="checkbox"
+                  [checked]="selectedSubcategories().includes(subcategory.path || '')"
+                  (change)="toggleSubcategory(subcategory.path || '', $any($event.target).checked)"
+                />
+                <span>{{ subcategory.name }} <span class="muted">· {{ subcategory.path?.split(' > ')?.[0] }}</span></span>
+              </label>
+            }
+          } @else {
+            <p class="multi-filter-empty">{{ 'catalog.noSubcategories' | t }}</p>
+          }
+        </div>
+      </details>
+    </div>
+  }
   <div class="shop-field">
     <span>{{ 'catalog.shop' | t }}</span>
     <div class="shop-picker">
@@ -106,38 +143,57 @@
   <button class="primary" type="submit">{{ 'action.search' | t }}</button>
 </form>
 
+@if (selectedCategories().length || selectedSubcategories().length || form.controls.chain.value || form.controls.q.value.trim()) {
+  <div class="active-filters" role="group" [attr.aria-label]="'catalog.activeFilters' | t">
+    @for (category of selectedCategories(); track category) {
+      <button
+        class="filter-chip"
+        type="button"
+        [attr.aria-label]="'catalog.removeCategory' | t: { name: category }"
+        (click)="removeCategoryFilter(category)"
+      >
+        <span>{{ 'catalog.category' | t }}: {{ category }}</span>
+        <span class="filter-chip-remove" aria-hidden="true">×</span>
+      </button>
+    }
+    @for (subcategory of selectedSubcategories(); track subcategory) {
+      <button
+        class="filter-chip"
+        type="button"
+        [attr.aria-label]="'catalog.removeSubcategory' | t: { name: subcategoryName(subcategory) }"
+        (click)="removeSubcategoryFilter(subcategory)"
+      >
+        <span>{{ 'catalog.subcategory' | t }}: {{ subcategoryName(subcategory) }}</span>
+        <span class="filter-chip-remove" aria-hidden="true">×</span>
+      </button>
+    }
+    @if (form.controls.chain.value) {
+      <button
+        class="filter-chip"
+        type="button"
+        [attr.aria-label]="'catalog.removeShop' | t: { name: form.controls.chain.value }"
+        (click)="removeShopFilter()"
+      >
+        <span>{{ 'catalog.shop' | t }}: {{ form.controls.chain.value }}</span>
+        <span class="filter-chip-remove" aria-hidden="true">×</span>
+      </button>
+    }
+    @if (form.controls.q.value.trim(); as query) {
+      <button
+        class="filter-chip"
+        type="button"
+        [attr.aria-label]="'catalog.removeSearch' | t: { query }"
+        (click)="removeSearchFilter()"
+      >
+        <span>{{ 'catalog.search' | t }}: {{ query }}</span>
+        <span class="filter-chip-remove" aria-hidden="true">×</span>
+      </button>
+    }
+  </div>
+}
+
 <div class="catalog-workspace">
   <div class="catalog-main">
-    @if (showCategoryChoices() && categories().length) {
-      <section class="content-section">
-        <header class="section-heading">
-          <div>
-            <h2>{{ (path() ? 'catalog.subcategories' : 'catalog.categories') | t }}</h2>
-            <p class="muted">{{ (path() ? 'catalog.subcategoryLead' : 'catalog.categoryLead') | t }}</p>
-          </div>
-        </header>
-        <div class="category-grid">
-          @for (category of categories(); track category.name) {
-            <a class="category-tile" routerLink="/catalog" [queryParams]="shelfQuery(category.name)">
-              <span class="category-image" [class.has-image]="category.image_url" aria-hidden="true">
-                @if (category.image_url) {
-                  <img [src]="category.image_url" alt="" loading="lazy" decoding="async" (error)="onImageError($event)" />
-                }
-                <svg viewBox="0 0 32 32" focusable="false">
-                  <path d="M7 10.5 16 6l9 4.5v11L16 26l-9-4.5zM7 10.5l9 4.7 9-4.7M16 15.2V26" />
-                </svg>
-              </span>
-              <span class="category-tile-copy">
-                <strong>{{ category.name }}</strong>
-                <span class="muted">{{ 'catalog.resultCount' | t: { count: category.products } }}</span>
-              </span>
-              <span class="row-arrow" aria-hidden="true">→</span>
-            </a>
-          }
-        </div>
-      </section>
-    }
-
     @if (loading()) {
       <p class="empty-state">{{ 'catalog.loading' | t }}</p>
     } @else if (products(); as rows) {

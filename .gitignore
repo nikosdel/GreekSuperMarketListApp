@@ -9,3 +9,12 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 *.egg-info/
+
+# Local editor and agent tooling
+.agents/
+.cursor/
+.impeccable/
+.mcp.json
+skills-lock.json
+.taste-skill/after/
+.taste-skill/production-after/

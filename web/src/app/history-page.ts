@@ -1,19 +1,18 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Api } from './api';
-import { when } from './money';
+import { TranslatePipe, WhenPipe } from './language';
 import { ShoppingList } from './models';
 
 @Component({
   selector: 'app-history',
-  imports: [RouterLink],
+  imports: [RouterLink, TranslatePipe, WhenPipe],
   templateUrl: './history-page.html',
 })
 export class HistoryPage {
   private api = inject(Api);
   readonly lists = signal<ShoppingList[] | null>(null);
   readonly error = signal('');
-  readonly when = when;
 
   constructor() {
     void this.load();

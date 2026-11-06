@@ -1,9 +1,11 @@
 import { Injectable, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { Session, problem, request } from './session';
 
 @Injectable({ providedIn: 'root' })
 export class Api {
   private session = inject(Session);
+  private router = inject(Router);
 
   get<T>(path: string): Promise<T> {
     return this.send<T>(path);
@@ -31,8 +33,11 @@ export class Api {
       headers.set('Authorization', `Bearer ${token}`);
     }
     const response = await request(path, { ...init, headers });
-    if (response.status === 401 && retry && await this.session.useRefresh()) {
-      return this.send(path, init, false);
+    if (response.status === 401) {
+      if (retry && await this.session.useRefresh()) {
+        return this.send(path, init, false);
+      }
+      void this.router.navigateByUrl('/login');
     }
     if (!response.ok) {
       throw new Error(await problem(response));

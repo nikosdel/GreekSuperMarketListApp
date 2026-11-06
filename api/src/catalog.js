@@ -55,6 +55,22 @@ function categoryClause(path, params) {
   return `(product.category_path = $${exact} OR product.category_path LIKE $${child} ESCAPE '\\')`;
 }
 
+export function categoryFiltersClause(categories, subcategories, params) {
+  const clauses = [];
+  for (const paths of [categories, subcategories]) {
+    if (!paths.length) {
+      continue;
+    }
+    clauses.push(`(${paths.map((path) => categoryClause(path, params)).join(" OR ")})`);
+  }
+  return clauses.length ? clauses.join(" AND ") : "TRUE";
+}
+
+function queryValues(value) {
+  const values = Array.isArray(value) ? value : [value];
+  return [...new Set(values.map((item) => String(item || "").trim()).filter(Boolean))].slice(0, 100);
+}
+
 async function listCategories(req, res) {
   const path = String(req.query.path || "").trim();
   const depth = path ? path.split(" > ").length : 0;
@@ -101,6 +117,8 @@ async function listChains(_req, res) {
 
 async function listProducts(req, res) {
   const path = String(req.query.path || "").trim();
+  const categories = queryValues(req.query.category);
+  const subcategories = queryValues(req.query.subcategory);
   const chain = String(req.query.chain || "").trim();
   const sort = req.query.sort === "name" ? "name" : "price";
   const limit = Math.min(48, Math.max(1, Number(req.query.limit) || 24));
@@ -109,7 +127,7 @@ async function listProducts(req, res) {
   if (String(req.query.q || "").trim() && !tokens.length) {
     throw new HttpError(400, "invalid_request", "Type at least two letters of the product name.");
   }
-  res.json(await queryProductGroups({ path, chain, sort, limit, offset, tokens }));
+  res.json(await queryProductGroups({ path, categories, subcategories, chain, sort, limit, offset, tokens }));
 }
 
 async function searchCatalog(req, res) {
@@ -120,9 +138,20 @@ async function searchCatalog(req, res) {
   res.json(await queryProductGroups({ sort: "price", limit: 12, offset: 0, tokens }));
 }
 
-async function queryProductGroups({ path = "", chain = "", sort = "price", limit, offset, tokens }) {
+async function queryProductGroups({
+  path = "",
+  categories = [],
+  subcategories = [],
+  chain = "",
+  sort = "price",
+  limit,
+  offset,
+  tokens,
+}) {
   const params = [];
-  const where = [categoryClause(path, params)];
+  const where = [
+    path ? categoryClause(path, params) : categoryFiltersClause(categories, subcategories, params),
+  ];
   for (const token of tokens) {
     params.push(`%${token.replace(/[%_\\]/g, "")}%`);
     where.push(`translate(product.name, '${FOLD_FROM}', '${FOLD_TO}') ILIKE $${params.length}`);

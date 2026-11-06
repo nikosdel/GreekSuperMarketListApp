@@ -21,20 +21,18 @@ export interface TokenPair {
 export class Session {
   readonly account = signal<Account | null>(null);
   private access = signal<string | null>(null);
+  private accessExpiresAt = 0;
+  private refreshPromise: Promise<boolean> | null = null;
 
   accessToken(): string | null {
     return this.access();
   }
 
   async ready(): Promise<boolean> {
-    if (this.access()) {
+    if (this.access() && this.accessExpiresAt > Date.now() + 30_000) {
       return true;
     }
-    const refresh = localStorage.getItem(REFRESH_KEY);
-    if (!refresh) {
-      return false;
-    }
-    return this.useRefresh(refresh);
+    return this.useRefresh();
   }
 
   async register(email: string, displayName: string, password: string): Promise<{ email_sent: boolean }> {
@@ -76,6 +74,16 @@ export class Session {
   }
 
   async useRefresh(refresh = localStorage.getItem(REFRESH_KEY)): Promise<boolean> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+    this.refreshPromise = this.refreshSession(refresh).finally(() => {
+      this.refreshPromise = null;
+    });
+    return this.refreshPromise;
+  }
+
+  private async refreshSession(refresh: string | null): Promise<boolean> {
     if (!refresh) {
       this.clear();
       return false;
@@ -94,6 +102,7 @@ export class Session {
 
   private async store(pair: TokenPair): Promise<void> {
     this.access.set(pair.access_token);
+    this.accessExpiresAt = Date.now() + pair.expires_in * 1000;
     localStorage.setItem(REFRESH_KEY, pair.refresh_token);
     const me = await request('/users/me', {
       headers: { Authorization: `Bearer ${pair.access_token}` },
@@ -107,10 +116,18 @@ export class Session {
 
   private clear(): void {
     this.access.set(null);
+    this.accessExpiresAt = 0;
     this.account.set(null);
     localStorage.removeItem(REFRESH_KEY);
   }
 }
+
+export const signedOut: CanActivateFn = async () => {
+  const session = inject(Session);
+  const router = inject(Router);
+  const ok = await session.ready();
+  return ok ? router.createUrlTree(['/']) : true;
+};
 
 export const signedIn: CanActivateFn = async () => {
   const session = inject(Session);

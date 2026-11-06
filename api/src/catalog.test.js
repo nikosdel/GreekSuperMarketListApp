@@ -1,6 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { groupProductRows } from "./catalog.js";
+import { categoryFiltersClause, groupProductRows } from "./catalog.js";
+
+test("combines multi-selected categories with any selected subcategory", () => {
+  const params = [];
+  const clause = categoryFiltersClause(
+    ["Dairy", "Fruit"],
+    ["Dairy > Milk", "Fruit > Apples"],
+    params,
+  );
+
+  assert.equal(
+    clause,
+    "((product.category_path = $1 OR product.category_path LIKE $2 ESCAPE '\\') OR (product.category_path = $3 OR product.category_path LIKE $4 ESCAPE '\\')) AND ((product.category_path = $5 OR product.category_path LIKE $6 ESCAPE '\\') OR (product.category_path = $7 OR product.category_path LIKE $8 ESCAPE '\\'))",
+  );
+  assert.deepEqual(params, [
+    "Dairy", "Dairy > %", "Fruit", "Fruit > %",
+    "Dairy > Milk", "Dairy > Milk > %", "Fruit > Apples", "Fruit > Apples > %",
+  ]);
+});
+
+test("omits unselected category dimensions", () => {
+  const params = [];
+
+  assert.equal(categoryFiltersClause([], [], params), "TRUE");
+  assert.equal(categoryFiltersClause(["Dairy"], [], params), "((product.category_path = $1 OR product.category_path LIKE $2 ESCAPE '\\'))");
+  assert.deepEqual(params, ["Dairy", "Dairy > %"]);
+});
 
 test("groups exact product identities while preserving separate supermarket offers", () => {
   const products = groupProductRows([
