@@ -18,7 +18,7 @@ export function createApp() {
   app.use(express.json({ limit: "20kb" }));
   app.use(express.urlencoded({ extended: false, limit: "20kb" }));
   const allowedOrigins = new Set(
-    (process.env.CORS_ORIGIN || "http://localhost:4200,http://127.0.0.1:4200")
+    (process.env.CORS_ORIGIN || "http://localhost:4200,http://127.0.0.1:4200,https://localhost,capacitor://localhost")
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean),

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Super Market List</string>
+    <string name="title_activity_main">Super Market List</string>
+    <string name="package_name">gr.supermarket.list</string>
+    <string name="custom_url_scheme">gr.supermarket.list</string>
+</resources>
