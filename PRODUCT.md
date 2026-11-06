@@ -10,7 +10,7 @@ The site and the phone apps share one Angular interface. Capacitor only supplies
 
 ## Stack
 
-Angular for the site, with SCSS for the styles. Capacitor wraps that same build for Android and iPhone. The Android project can be built on this PC. The iPhone shell is compiled in Xcode on a Mac.
+Angular for the site, with SCSS for the styles. Capacitor wraps that same build for Android and iPhone. The Android project can be built on this PC. The iPhone shell is compiled by GitHub Actions on a Mac runner, so this PC does not need Xcode.
 
 The look is our own SCSS, not a visual component kit. Angular Material, Bootstrap, and PrimeNG were declined because those kits would decide the screens. Angular CDK may be used later for focus and overlays only. It does not supply the visual design.
 
