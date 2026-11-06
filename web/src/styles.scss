@@ -1629,6 +1629,14 @@ select:focus {
   margin-top: 2px;
 }
 
+.auth-panel .error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #e4b4b4;
+  border-radius: 6px;
+  background: #fdeeee;
+}
+
 .field-hint {
   font-size: 12px;
   font-weight: 400;

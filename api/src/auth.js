@@ -7,13 +7,49 @@ import { issueRefreshToken, readAccessToken, revokeRefreshToken, rotateRefreshTo
 
 const DUMMY_HASH = bcrypt.hashSync("invalid-password-placeholder", 12);
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+export const LOGIN_ATTEMPT_LIMIT = 30;
+export const WRONG_LOGIN_MESSAGE = "The email or password is wrong.";
 
-export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
+export function loginAttemptMessage(req) {
+  const resetTime = req.rateLimit?.resetTime;
+  const remainingMs = resetTime instanceof Date
+    ? Math.max(0, resetTime.getTime() - Date.now())
+    : LOGIN_WINDOW_MS;
+  const minutes = Math.max(1, Math.ceil(remainingMs / 60_000));
+  const unit = minutes === 1 ? "minute" : "minutes";
+  return {
+    error: "too_many_requests",
+    message: `Too many attempts. Try again after ${minutes} ${unit}.`,
+  };
+}
+
+const registerLimiter = rateLimit({
+  windowMs: LOGIN_WINDOW_MS,
+  limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "too_many_requests", message: "Too many attempts. Try again later." },
+});
+
+const loginLimiter = rateLimit({
+  windowMs: LOGIN_WINDOW_MS,
+  limit: LOGIN_ATTEMPT_LIMIT,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  skip: (req) => String(req.body?.grant_type || "") !== "password",
+  message: loginAttemptMessage,
+});
+
+const refreshLimiter = rateLimit({
+  windowMs: LOGIN_WINDOW_MS,
+  limit: LOGIN_ATTEMPT_LIMIT,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  skip: (req) => String(req.body?.grant_type || "") === "password",
+  message: loginAttemptMessage,
 });
 
 function cleanEmail(value) {
@@ -44,7 +80,7 @@ export function requireUser(req, _res, next) {
 export function registerRoutes(app) {
   app.post(
     "/users",
-    authLimiter,
+    registerLimiter,
     asyncRoute(async (req, res) => {
       const email = cleanEmail(req.body?.email);
       const displayName = String(req.body?.display_name || "").trim();
@@ -78,21 +114,25 @@ export function registerRoutes(app) {
 
   app.post(
     "/oauth/token",
-    authLimiter,
+    refreshLimiter,
+    loginLimiter,
     asyncRoute(async (req, res) => {
       const grant = String(req.body?.grant_type || "");
       if (grant === "password") {
-        const email = cleanEmail(req.body?.username);
+        const email = String(req.body?.username || "").trim().toLowerCase();
         const password = String(req.body?.password || "");
-        const found = await pool.query(
-          "SELECT id, password_hash FROM app_user WHERE email = $1",
-          [email],
-        );
+        const emailOk = EMAIL_PATTERN.test(email) && email.length <= 200;
+        const found = emailOk
+          ? await pool.query(
+            "SELECT id, password_hash FROM app_user WHERE email = $1",
+            [email],
+          )
+          : { rows: [] };
         const row = found.rows[0];
         const hash = row?.password_hash || DUMMY_HASH;
         const matches = await bcrypt.compare(password, hash);
-        if (!row || !matches) {
-          throw new HttpError(401, "invalid_grant", "The email or password is wrong.");
+        if (!emailOk || !password || !row || !matches) {
+          throw new HttpError(401, "invalid_grant", WRONG_LOGIN_MESSAGE);
         }
         const refreshToken = await issueRefreshToken(row.id);
         res.json(tokenResponse(Number(row.id), refreshToken));
